@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Zona protegida</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <main class="angosto">
+        <h1>Bienvenido, {{ usuario.username }}</h1>
+        <h2>rol: {{usuario.rol}}</h2>
+        <p class="subtitulo">Esta página solo es visible con la sesión iniciada.</p>
+
+        <p><a class="boton" href="{{ url_for('logout') }}">Cerrar sesión</a> · <a href="{{ url_for('index') }}">Ir a productos</a></p>
+    </main>
+</body>
+</html>

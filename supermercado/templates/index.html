@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Supermercado - Productos</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <main>
+        <nav>
+            {% if current_user.is_authenticated %}
+                Conectado como <strong>{{ current_user.username }}</strong> ·
+                <a href="{{ url_for('protegido') }}">Zona protegida</a> ·
+                <a href="{{ url_for('logout') }}">Cerrar sesión</a>
+            {% else %}
+                <a href="{{ url_for('login') }}">Iniciar sesión</a> ·
+                <a href="{{ url_for('registro') }}">Registrarse</a>
+            {% endif %}
+        </nav>
+
+        <h1>Gestión de productos</h1>
+        <p class="subtitulo">Alta, baja, modificación y listado de productos del supermercado.</p>
+
+        {% for mensaje in get_flashed_messages() %}
+        <p class="mensaje">{{ mensaje }}</p>
+        {% endfor %}
+
+        <section class="tarjeta">
+            {% if editando %}
+            <h2>Editar producto #{{ editando }}</h2>
+            <form method="post" action="{{ url_for('editar_producto', producto_id=editando) }}">
+            {% else %}
+            <h2>Nuevo producto</h2>
+            <form method="post" action="{{ url_for('nuevo_producto') }}">
+            {% endif %}
+                <div class="fila">
+                    <label>Nombre *
+                        <input type="text" name="nombre" maxlength="120" value="{{ form.get('nombre', '') }}" required>
+                    </label>
+                    <label>Categoría *
+                        <input type="text" name="categoria" maxlength="60" list="categorias" value="{{ form.get('categoria', '') }}" required>
+                        <datalist id="categorias">
+                            <option value="Almacén"></option>
+                            <option value="Bebidas"></option>
+                            <option value="Lácteos"></option>
+                            <option value="Frutas y verduras"></option>
+                            <option value="Carnes"></option>
+                            <option value="Limpieza"></option>
+                            <option value="Perfumería"></option>
+                            <option value="Panadería"></option>
+                        </datalist>
+                    </label>
+                </div>
+                <div class="fila">
+                    <label>Precio ($) *
+                        <input type="number" name="precio" min="0" step="0.01" value="{{ form.get('precio', '') }}" required>
+                    </label>
+                    <label>Stock
+                        <input type="number" name="stock" min="0" step="1" value="{{ form.get('stock', 0) }}">
+                    </label>
+                    <label>Código de barras
+                        <input type="text" name="codigo_barras" maxlength="30" value="{{ form.get('codigo_barras') or '' }}">
+                    </label>
+                </div>
+                <div class="acciones">
+                    <button type="submit">{{ "Actualizar" if editando else "Guardar" }}</button>
+                    {% if editando %}
+                    <a class="boton secundario" href="{{ url_for('index') }}">Cancelar edición</a>
+                    {% endif %}
+                </div>
+            </form>
+        </section>
+
+        <h2>Listado</h2>
+        <div class="tabla-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Código</th>
+                        <th>Nombre</th>
+                        <th>Categoría</th>
+                        <th>Precio</th>
+                        <th>Stock</th>
+                        <th>Alta</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in productos %}
+                    <tr>
+                        <td>{{ p.id }}</td>
+                        <td>{{ p.codigo_barras or "-" }}</td>
+                        <td>{{ p.nombre }}</td>
+                        <td>{{ p.categoria }}</td>
+                        <td>${{ "%.2f"|format(p.precio) }}</td>
+                        <td>{{ p.stock }}</td>
+                        <td>{{ p.fecha_alta.strftime("%Y-%m-%d %H:%M") }}</td>
+                        <td>
+                            <div class="celda-acciones">
+                                <a class="boton chico secundario" href="{{ url_for('editar_producto', producto_id=p.id) }}">Editar</a>
+                                <form method="post" action="{{ url_for('borrar_producto', producto_id=p.id) }}">
+                                    <button type="submit" class="chico peligro">Eliminar</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="8">No hay productos cargados.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </main>
+</body>
+</html>

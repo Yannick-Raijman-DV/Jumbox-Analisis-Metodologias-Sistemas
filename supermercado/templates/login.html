@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Iniciar sesión</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <main class="angosto">
+        <h1>Iniciar sesión</h1>
+
+        {% for mensaje in get_flashed_messages() %}
+        <p class="mensaje">{{ mensaje }}</p>
+        {% endfor %}
+
+        <form method="post">
+            <label>Usuario <input type="text" name="username" required></label>
+            <label>Contraseña <input type="password" name="password" required></label>
+            <button type="submit">Entrar</button>
+        </form>
+
+        <p>¿No tenés cuenta? <a href="{{ url_for('registro') }}">Registrate</a> · <a href="{{ url_for('index') }}">Volver a productos</a></p>
+    </main>
+</body>
+</html>

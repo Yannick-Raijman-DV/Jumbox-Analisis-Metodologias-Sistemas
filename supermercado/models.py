@@ -35,8 +35,10 @@ class Usuario(UserMixin, db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
-    password = db.Column(db.String(200), nullable=False)  # guarda el hash de bcrypt, nunca el texto plano
+    password = db.Column(db.String(200))  # hash de bcrypt; None si el usuario entra solo con Google
     rol = db.Column(db.String(40))
+    email = db.Column(db.String(120), unique=True)
+    google_id = db.Column(db.String(60), unique=True)  # "sub" de Google, identifica la cuenta
 
 
 # ---------- Funciones de acceso a datos ----------

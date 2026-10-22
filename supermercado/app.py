@@ -1,6 +1,11 @@
+import os
+
+from authlib.integrations.flask_client import OAuth
+from dotenv import load_dotenv
 from flask import Flask, jsonify, request, abort, render_template, redirect, url_for, flash, session
 from flask_bcrypt import Bcrypt
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 from models import (
     db,
@@ -13,10 +18,15 @@ from models import (
     cargar_datos_iniciales,
 )
 
-app = Flask(__name__)
-app.config["SECRET_KEY"] = "bd1xd"
+load_dotenv()  # lee el archivo .env (en Render se usan las variables de entorno del panel)
 
-app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///supermercado.db"
+app = Flask(__name__)
+# Render está detrás de un proxy HTTPS: sin esto url_for(_external=True) genera http:// y Google lo rechaza
+app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
+
+app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "bd1xd")
+
+app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL", "sqlite:///supermercado.db")
 
 db.init_app(app)
 bcrypt = Bcrypt(app)
@@ -24,6 +34,15 @@ bcrypt = Bcrypt(app)
 login_manager = LoginManager(app)
 login_manager.login_view = "login"  # a dónde redirige @login_required si no hay sesión
 login_manager.login_message = "Tenés que iniciar sesión para ver esa página."
+
+oauth = OAuth(app)
+google = oauth.register(
+    name="google",
+    client_id=os.environ.get("GOOGLE_CLIENT_ID"),
+    client_secret=os.environ.get("GOOGLE_CLIENT_SECRET"),
+    server_metadata_url="https://accounts.google.com/.well-known/openid-configuration",
+    client_kwargs={"scope": "openid email profile"},
+)
 
 
 @login_manager.user_loader
@@ -149,7 +168,7 @@ def registro():
             flash("Ese usuario ya existe.")
         else:
             hashed_pw = bcrypt.generate_password_hash(password).decode("utf-8")
-            db.session.add(Usuario(username=username, password=hashed_pw, rol="admin"))
+            db.session.add(Usuario(username=username, password=hashed_pw, rol="usuario"))
             db.session.commit()
             flash("Usuario creado, ya podés iniciar sesión.")
             return redirect(url_for("login"))
@@ -163,7 +182,7 @@ def login():
         usuario = Usuario.query.filter_by(username=request.form["username"]).first()
 
         # Comparamos la contraseña ingresada con el hash guardado en la BD
-        if usuario and bcrypt.check_password_hash(usuario.password, request.form["password"]):
+        if usuario and usuario.password and bcrypt.check_password_hash(usuario.password, request.form["password"]):
             login_user(usuario)  # guarda el id del usuario en la sesión
             session["username"] = usuario.username  # ejemplo de guardar un dato propio en session
             return redirect(url_for("protegido"))
@@ -171,6 +190,39 @@ def login():
         flash("Usuario o contraseña incorrectos.")
 
     return render_template("login.html")
+
+
+@app.route("/auth/google")
+def login_google():
+    return google.authorize_redirect(url_for("callback_google", _external=True))
+
+
+@app.route("/auth/google/callback")
+def callback_google():
+    try:
+        token = google.authorize_access_token()
+    except Exception:
+        flash("No se pudo iniciar sesión con Google.")
+        return redirect(url_for("login"))
+
+    info = token["userinfo"]  # sub, email, name, picture...
+    usuario = Usuario.query.filter_by(google_id=info["sub"]).first()
+
+    if usuario is None:
+        # Si ya había una cuenta con ese email, la vinculamos; si no, creamos una nueva
+        usuario = Usuario.query.filter_by(email=info["email"]).first()
+        if usuario is None:
+            usuario = Usuario.query.filter_by(username=info["email"]).first()
+        if usuario is None:
+            usuario = Usuario(username=info["email"], rol="usuario")
+            db.session.add(usuario)
+        usuario.email = info["email"]
+        usuario.google_id = info["sub"]
+        db.session.commit()
+
+    login_user(usuario)
+    session["username"] = usuario.username
+    return redirect(url_for("protegido"))
 
 
 @app.route("/protegido")

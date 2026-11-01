@@ -56,7 +56,16 @@
                     <td class="p-4 font-semibold">{{ u.nombre }}</td>
                     <td class="p-4 text-on-surface-variant">{{ u.correo }}</td>
                     <td class="p-4">
-                        <span class="px-2.5 py-1 rounded-full text-xs font-label-sm font-bold bg-primary-fixed text-primary">{{ u.rol_nombre }}</span>
+                        <form method="post" action="{{ url_for('auth.cambiar_rol_usuario', usuario_id=u.id) }}" class="flex items-center gap-2">
+                            <select name="rol_id" class="rounded-lg border-outline-variant text-xs py-1 pl-2 pr-7 font-semibold text-primary bg-surface-container-low">
+                                {% for r in roles %}
+                                <option value="{{ r.id }}" {% if u.rol_id == r.id %}selected{% endif %}>{{ r.nombre }}</option>
+                                {% endfor %}
+                            </select>
+                            <button type="submit" class="bg-primary text-white px-2.5 py-1 rounded-lg text-xs font-semibold hover:bg-primary-container transition-colors">
+                                Guardar
+                            </button>
+                        </form>
                     </td>
                     <td class="p-4 text-xs text-on-surface-variant">
                         {% if u.google_id %}Google OAuth{% else %}Local (Bcrypt){% endif %}

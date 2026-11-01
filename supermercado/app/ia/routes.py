@@ -1,5 +1,5 @@
 """Blueprint de Inteligencia Artificial: sugerencias de reposición con LLM local pequeña."""
-from flask import Blueprint, flash, redirect, render_template, request, url_for
+from flask import Blueprint, current_app, flash, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user
 
 from ..decorators import rol_requerido
@@ -18,8 +18,8 @@ bp = Blueprint("ia", __name__)
 @bp.route("/reposicion")
 @rol_requerido(ROL_ADMIN, ROL_OPERARIO)
 def reposicion():
+    """Renderiza la vista de inmediato. El informe de la LLM se solicita por fetch a /ia/api/recomendacion."""
     candidatos = calcular_candidatos_reposicion()
-    recomendacion = llm.generar_recomendacion(candidatos)
 
     # Agrupar los ítems con acción "Reponer" por proveedor para generar el pedido en 1 clic
     pedidos_por_proveedor: dict[int, dict] = {}
@@ -27,18 +27,32 @@ def reposicion():
         if c["accion"] == "Reponer":
             grupo = pedidos_por_proveedor.setdefault(
                 c["proveedor_id"],
-                {"proveedor_id": c["proveedor_id"], "proveedor": c["proveedor"], "items": [], "total": 0.0},
+                {"proveedor_id": c["proveedor_id"], "proveedor": c["proveedor"], "productos": [], "total": 0.0},
             )
             subtotal = round(c["cantidad_sugerida"] * c["precio_compra"], 2)
-            grupo["items"].append({**c, "subtotal": subtotal})
+            grupo["productos"].append({**c, "subtotal": subtotal})
             grupo["total"] = round(grupo["total"] + subtotal, 2)
+
+    # Si LLM_ENABLED=false el motor de reglas es instantáneo (<1 ms), lo pasamos listo;
+    # si LLM_ENABLED=true la página abre al instante con "Generando informe..." y lo pide por AJAX.
+    recomendacion_inicial = None if current_app.config["LLM_ENABLED"] else llm.generar_recomendacion(candidatos)
 
     return render_template(
         "ia/reposicion.html",
         candidatos=candidatos,
-        recomendacion=recomendacion,
+        recomendacion=recomendacion_inicial,
+        modelo=current_app.config["LLM_MODEL"],
+        llm_habilitada=current_app.config["LLM_ENABLED"],
         pedidos_por_proveedor=list(pedidos_por_proveedor.values()),
     )
+
+
+@bp.route("/api/recomendacion")
+@rol_requerido(ROL_ADMIN, ROL_OPERARIO)
+def api_recomendacion():
+    """Endpoint JSON asíncrono que ejecuta la LLM local y devuelve el informe redactado."""
+    candidatos = calcular_candidatos_reposicion()
+    return jsonify(llm.generar_recomendacion(candidatos))
 
 
 @bp.route("/reposicion/generar-pedido", methods=["POST"])

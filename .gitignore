@@ -1,5 +1,13 @@
 .env
-instance/*.db
+**/instance/
+**/*.db
+**/*.db-journal
 __pycache__/
-*.pyc
+*.py[cod]
 .venv/
+venv/
+.pytest_cache/
+**/static/uploads/
+hf_cache/
+models_cache/
+/supermercado/docs

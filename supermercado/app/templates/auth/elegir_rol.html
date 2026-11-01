@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>JUMBOX - Elegir Rol</title>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+    <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+</head>
+<body class="min-h-screen bg-[#00375e] flex items-center justify-center p-4 font-['Hanken_Grotesk',sans-serif]">
+    <div class="w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden p-6 space-y-5">
+        <div class="flex items-center gap-3">
+            {% if pendiente.foto %}
+            <img src="{{ pendiente.foto }}" alt="" class="w-12 h-12 rounded-full border"/>
+            {% endif %}
+            <div>
+                <h1 class="text-lg font-bold text-slate-900">Completá tu registro con Google</h1>
+                <p class="text-xs text-slate-500">{{ pendiente.nombre }} ({{ pendiente.email }})</p>
+            </div>
+        </div>
+
+        {% include "partials/_flash.html" %}
+
+        <p class="text-sm text-slate-600">Elegí el puesto con el que vas a operar en la sucursal:</p>
+
+        <form method="post" class="space-y-3">
+            <label class="flex items-start gap-3 p-4 rounded-xl border border-slate-300 hover:border-[#00375e] cursor-pointer">
+                <input type="radio" name="rol" value="Cajero" checked class="mt-1 text-[#00375e] focus:ring-[#00375e]"/>
+                <div>
+                    <p class="font-bold text-slate-900">Cajero (Punto de Venta y Clientes)</p>
+                    <p class="text-xs text-slate-500">Acceso a facturación POS, tickets, envíos y fidelización de clientes.</p>
+                </div>
+            </label>
+
+            <label class="flex items-start gap-3 p-4 rounded-xl border border-slate-300 hover:border-[#00375e] cursor-pointer">
+                <input type="radio" name="rol" value="Operario" class="mt-1 text-[#00375e] focus:ring-[#00375e]"/>
+                <div>
+                    <p class="font-bold text-slate-900">Operario (Stock, Depósito, Proveedores e IA)</p>
+                    <p class="text-xs text-slate-500">Acceso a inventario por vencimiento, mermas, traslados, proveedores y reposición IA.</p>
+                </div>
+            </label>
+
+            <button type="submit" class="w-full bg-[#006c49] hover:bg-[#10b981] text-white font-semibold py-2.5 rounded-xl transition-colors">
+                Confirmar Rol y Entrar
+            </button>
+        </form>
+    </div>
+</body>
+</html>

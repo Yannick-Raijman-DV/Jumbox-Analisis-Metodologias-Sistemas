@@ -11,23 +11,40 @@ Patrón singleton + lazy loading:
       (LLM_ENABLED=false) ni siquiera se importan.
 
 Decisión de diseño: las cantidades las calcula Python
-(services/inventario.calcular_candidatos_reposicion). El modelo solo redacta
-un resumen priorizado en español a partir de esos datos, para que un modelo de
-0.5B parámetros no invente números.
+(services/inventario.calcular_candidatos_reposicion). El modelo recibe los
+hechos ya calculados en oraciones simples (con un ejemplo one-shot) y redacta
+un dictamen ejecutivo breve en español, evitando que un modelo de 0.5B alucine
+números o copie fragmentos de una tabla.
 """
 import threading
 import time
 
 from flask import current_app
 
-INSTRUCCIONES = """Sos el asistente de compras del supermercado JUMBOX.
-Recibís una tabla con productos que necesitan atención, ya analizada por el sistema.
-Escribí en español rioplatense, en 4 a 6 viñetas cortas:
-- Primero lo urgente (prioridad alta), después lo demás.
-- Agrupá los pedidos por proveedor cuando se pueda.
-- Para cada producto usá EXACTAMENTE la acción y la cantidad de la tabla. No inventes números ni productos.
-- Si hay productos para promocionar o dar de baja, recomendá qué hacer con ellos.
-Terminá con una línea que empiece con "Resumen:" con la acción más importante del día."""
+SISTEMA_PROMPT = (
+    "Sos el encargado de compras e inventario del supermercado JUMBOX. "
+    "A partir de las alertas del día, redactá un párrafo breve en español rioplatense (2 a 3 oraciones) "
+    "indicando qué acción urgente hacer primero y qué pedidos emitir a cada proveedor. "
+    "Usá exactamente los productos y cantidades informados."
+)
+
+EJEMPLO_USER = (
+    "Alertas del día:\n"
+    "• Leche 1L está vencido: retirarlo de la góndola y registrar la merma.\n"
+    "• Pedido a La Serenísima: 10 u. de Yogur."
+)
+EJEMPLO_ASSISTANT = (
+    "Primero hay que retirar de la góndola la Leche 1L vencida y cargarla como merma para evitar que pase por caja. "
+    "En segundo lugar, conviene emitir hoy mismo el pedido a La Serenísima por 10 unidades de Yogur para recomponer el stock."
+)
+
+FRASES_ECO_PROHIBIDAS = (
+    "primero lo urgente",
+    "agrupá los pedidos",
+    "para cada producto usá",
+    "si hay productos para promocionar",
+    "terminá con una línea",
+)
 
 
 class AsistenteReposicion:
@@ -40,7 +57,7 @@ class AsistenteReposicion:
         inicio = time.time()
         print(f"[LLM] Cargando {modelo} (la primera vez se descarga)...")
         self.modelo = modelo
-        self.generar = pipeline("text-generation", model=modelo, torch_dtype="auto")
+        self.generar = pipeline("text-generation", model=modelo, dtype="auto")
         self.segundos_carga = round(time.time() - inicio, 1)
         print(f"[LLM] Modelo listo en {self.segundos_carga}s")
 
@@ -63,47 +80,68 @@ class AsistenteReposicion:
         with cls._lock:
             cls._instancia = None
 
-    def redactar(self, tabla: str, max_tokens: int) -> str:
+    def redactar(self, puntos_operativos: str, max_tokens: int) -> str:
         mensajes = [
-            {"role": "system", "content": INSTRUCCIONES},
-            {"role": "user", "content": f"Productos a revisar:\n{tabla}"},
+            {"role": "system", "content": SISTEMA_PROMPT},
+            {"role": "user", "content": EJEMPLO_USER},
+            {"role": "assistant", "content": EJEMPLO_ASSISTANT},
+            {"role": "user", "content": f"Alertas del día:\n{puntos_operativos}"},
         ]
-        salida = self.generar(mensajes, max_new_tokens=max_tokens, do_sample=False)
-        return salida[0]["generated_text"][-1]["content"].strip()
-
-
-def _tabla_para_prompt(candidatos: list[dict]) -> str:
-    lineas = ["producto | proveedor | acción | cantidad | prioridad | detalle"]
-    for c in candidatos[:15]:  # el contexto de un modelo chico es limitado
-        lineas.append(
-            f"{c['nombre']} | {c['proveedor']} | {c['accion']} | {c['cantidad_sugerida']} | "
-            f"{c['prioridad']} | {c['motivo']}"
+        salida = self.generar(
+            mensajes,
+            max_new_tokens=min(max_tokens, 160),
+            do_sample=False,
+            repetition_penalty=1.15,
         )
-    return "\n".join(lineas)
+        generado = salida[0]["generated_text"][-1]["content"].strip()
+        return _limpiar_salida_llm(generado)
 
 
-def resumen_por_reglas(candidatos: list[dict]) -> str:
-    """Fallback sin modelo: arma el mismo tipo de resumen con plantillas."""
+def _limpiar_salida_llm(texto: str) -> str:
+    """Quita posibles ecos del prompt o barras '|' si el modelo 0.5B intenta copiarlas."""
+    lineas_limpias = []
+    for linea in texto.splitlines():
+        limpia = linea.strip()
+        if not limpia or "|" in limpia:
+            continue
+        if any(frase in limpia.lower() for frase in FRASES_ECO_PROHIBIDAS):
+            continue
+        lineas_limpias.append(limpia)
+    return " ".join(lineas_limpias).strip()
+
+
+def puntos_operativos(candidatos: list[dict]) -> list[str]:
+    """Construye las viñetas exactas de compras, traslados y vencimientos."""
     if not candidatos:
-        return "• El inventario está en orden: no hay productos bajo el mínimo ni por vencer.\nResumen: no hace falta pedir nada hoy."
+        return ["• El inventario está en orden: no hay productos bajo el mínimo ni por vencer."]
 
     lineas = []
     reponer: dict[str, list[str]] = {}
     for c in candidatos:
-        if c["accion"] == "Reponer":
+        if c["accion"] == "Dar de baja":
+            lineas.append(f"• URGENTE — {c['nombre']} está vencido: retirar {c['cantidad_sugerida']} u. y registrar merma.")
+        elif c["accion"] == "Promocionar":
+            lineas.append(f"• ATENCIÓN — {c['nombre']} vence en {c['dias_para_vencer']} días: promocionar en caja, no reponer.")
+        elif c["accion"] == "Reponer":
             reponer.setdefault(c["proveedor"], []).append(f"{c['cantidad_sugerida']} u. de {c['nombre']}")
         elif c["accion"] == "Trasladar":
-            lineas.append(f"• Trasladar {c['cantidad_sugerida']} u. de {c['nombre']} del depósito a la góndola.")
-        elif c["accion"] == "Promocionar":
-            lineas.append(f"• {c['nombre']} vence en {c['dias_para_vencer']} días: armar una promoción, no reponer.")
-        elif c["accion"] == "Dar de baja":
-            lineas.append(f"• {c['nombre']} está vencido: retirarlo de la góndola y registrar la merma.")
-    for proveedor, productos in reponer.items():
-        lineas.insert(0, f"• Pedido a {proveedor}: " + ", ".join(productos) + ".")
+            lineas.append(f"• TRASLADO — Pasar {c['cantidad_sugerida']} u. de {c['nombre']} del Depósito Central a Góndola.")
 
+    for proveedor, productos in reponer.items():
+        lineas.append(f"• PEDIDO A {proveedor.upper()} — Solicitar " + ", ".join(productos) + ".")
+    return lineas
+
+
+def resumen_por_reglas(candidatos: list[dict]) -> str:
+    """Fallback sin modelo: arma las viñetas operativas + resumen final."""
+    vinetas = puntos_operativos(candidatos)
+    if not candidatos:
+        return "\n".join(vinetas) + "\n\nResumen: no hace falta pedir ni dar de baja productos hoy."
     urgente = candidatos[0]
-    lineas.append(f"Resumen: lo más urgente es «{urgente['nombre']}» ({urgente['accion'].lower()}).")
-    return "\n".join(lineas)
+    return (
+        "\n".join(vinetas)
+        + f"\n\nResumen: la prioridad inmediata es «{urgente['nombre']}» ({urgente['accion'].lower()})."
+    )
 
 
 def estado() -> dict:
@@ -124,10 +162,14 @@ def generar_recomendacion(candidatos: list[dict]) -> dict:
         resultado["texto"] = resumen_por_reglas(candidatos)
         return resultado
 
+    vinetas_str = "\n".join(puntos_operativos(candidatos))
     try:
         inicio = time.time()
         asistente = AsistenteReposicion.obtener(cfg["LLM_MODEL"])
-        resultado["texto"] = asistente.redactar(_tabla_para_prompt(candidatos), cfg["LLM_MAX_TOKENS"])
+        dictamen = asistente.redactar(vinetas_str, cfg["LLM_MAX_TOKENS"])
+        if not dictamen:
+            dictamen = f"La prioridad inmediata es atender «{candidatos[0]['nombre']}» ({candidatos[0]['accion'].lower()})."
+        resultado["texto"] = f"{vinetas_str}\n\nResumen IA ({cfg['LLM_MODEL']}):\n{dictamen}"
         resultado["fuente"] = "llm"
         resultado["segundos"] = round(time.time() - inicio, 1)
     except Exception as error:  # sin torch, sin RAM, sin internet la primera vez...

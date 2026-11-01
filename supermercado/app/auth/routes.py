@@ -148,6 +148,30 @@ def gestionar_usuarios():
     return render_template("auth/usuarios.html", usuarios=usuarios, roles=roles)
 
 
+@bp.route("/usuarios/<int:usuario_id>/rol", methods=["POST"])
+@rol_requerido(ROL_ADMIN)
+def cambiar_rol_usuario(usuario_id: int):
+    usuario = db.session.get(Usuario, usuario_id)
+    if usuario is None:
+        flash("El usuario no existe.", "error")
+        return redirect(url_for("auth.gestionar_usuarios"))
+
+    nuevo_rol_id = request.form.get("rol_id", type=int)
+    rol_obj = db.session.get(RolUsuario, nuevo_rol_id) if nuevo_rol_id else None
+    if rol_obj is None:
+        flash("Seleccioná un rol válido.", "error")
+        return redirect(url_for("auth.gestionar_usuarios"))
+
+    if usuario.id == current_user.id and rol_obj.nombre != ROL_ADMIN:
+        flash("No podés quitarte el rol de Administrador a tu propia cuenta.", "warning")
+        return redirect(url_for("auth.gestionar_usuarios"))
+
+    usuario.rol_id = rol_obj.id
+    db.session.commit()
+    flash(f"Rol de «{usuario.nombre}» actualizado a {rol_obj.nombre}.", "success")
+    return redirect(url_for("auth.gestionar_usuarios"))
+
+
 @bp.route("/logout")
 @login_required
 def logout():

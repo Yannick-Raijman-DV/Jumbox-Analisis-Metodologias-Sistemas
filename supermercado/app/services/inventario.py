@@ -364,18 +364,23 @@ def calcular_candidatos_reposicion(dias_ventas: int = 30, dias_cobertura: int = 
             "precio_compra": ultimo_precio_compra(p), "cantidad_sugerida": 0,
         }
 
+        objetivo = max(p.stock_minimo * 2, math.ceil(venta_diaria * dias_cobertura))
+        riesgo_quiebre = venta_diaria > 0 and stock_total < venta_diaria * 7
+
         if dias < 0:
-            candidatos.append({**base, "accion": "Dar de baja", "prioridad": "alta",
-                               "cantidad_sugerida": stock_total,
-                               "motivo": f"Vencido hace {-dias} días: retirar de la venta y registrar merma."})
+            if stock_total > 0:
+                candidatos.append({**base, "accion": "Dar de baja", "prioridad": "alta",
+                                   "cantidad_sugerida": stock_total,
+                                   "motivo": f"Vencido hace {-dias} días: retirar {stock_total} u. y registrar merma."})
+            cant_nueva = max(2, objetivo)
+            candidatos.append({**base, "accion": "Reponer", "prioridad": "alta",
+                               "cantidad_sugerida": cant_nueva,
+                               "motivo": f"Partida vencida hace {-dias} días: pedir lote nuevo al proveedor."})
             continue
         if dias <= alerta:
             candidatos.append({**base, "accion": "Promocionar", "prioridad": "media",
                                "motivo": f"Vence en {dias} días: no reponer, conviene promocionarlo."})
             continue
-
-        objetivo = max(p.stock_minimo * 2, math.ceil(venta_diaria * dias_cobertura))
-        riesgo_quiebre = venta_diaria > 0 and stock_total < venta_diaria * 7
 
         if stock_total <= p.stock_minimo or riesgo_quiebre:
             cantidad = max(1, objetivo - stock_total)

@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>{% block title %}JUMBOX SaaS - Gestión de Supermercados{% endblock %}</title>
+
+    <!-- Material Symbols -->
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+    <!-- Typography: Hanken Grotesk & JetBrains Mono -->
+    <link href="https://fonts.googleapis.com" rel="preconnect"/>
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+    <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "on-tertiary": "#ffffff",
+                        "surface-container-low": "#eff4ff",
+                        "surface": "#f8f9ff",
+                        "background": "#f8f9ff",
+                        "on-primary-fixed-variant": "#184974",
+                        "tertiary-container": "#6c4300",
+                        "on-surface-variant": "#42474f",
+                        "on-primary": "#ffffff",
+                        "surface-dim": "#cbdbf5",
+                        "surface-container-high": "#dce9ff",
+                        "primary": "#00375e",
+                        "tertiary-fixed": "#ffddb8",
+                        "secondary-container": "#6cf8bb",
+                        "outline": "#72777f",
+                        "on-primary-fixed": "#001d35",
+                        "on-tertiary-container": "#ffab31",
+                        "on-secondary-fixed-variant": "#005236",
+                        "secondary-fixed-dim": "#4edea3",
+                        "surface-container-highest": "#d3e4fe",
+                        "outline-variant": "#c2c7d0",
+                        "tertiary": "#4d2f00",
+                        "primary-fixed": "#d1e4ff",
+                        "primary-fixed-dim": "#a0cafc",
+                        "secondary-fixed": "#6ffbbe",
+                        "surface-container": "#e5eeff",
+                        "primary-container": "#1f4e79",
+                        "on-secondary-fixed": "#002113",
+                        "on-tertiary-fixed": "#2a1700",
+                        "surface-variant": "#d3e4fe",
+                        "surface-bright": "#f8f9ff",
+                        "surface-tint": "#35618d",
+                        "on-background": "#0b1c30",
+                        "surface-container-lowest": "#ffffff",
+                        "error-container": "#ffdad6",
+                        "on-surface": "#0b1c30",
+                        "on-tertiary-fixed-variant": "#653e00",
+                        "error": "#ba1a1a",
+                        "inverse-primary": "#a0cafc",
+                        "on-secondary": "#ffffff",
+                        "tertiary-fixed-dim": "#ffb95f",
+                        "on-error": "#ffffff",
+                        "inverse-on-surface": "#eaf1ff",
+                        "secondary": "#006c49",
+                        "inverse-surface": "#213145",
+                        "on-primary-container": "#95bff1",
+                        "on-error-container": "#93000a",
+                        "on-secondary-container": "#00714d"
+                    },
+                    spacing: {
+                        "sidebar-width": "260px",
+                        "gutter": "24px"
+                    },
+                    fontFamily: {
+                        "body-md": ["Hanken Grotesk", "sans-serif"],
+                        "label-sm": ["JetBrains Mono", "monospace"],
+                        "label-md": ["JetBrains Mono", "monospace"],
+                        "headline-md": ["Hanken Grotesk", "sans-serif"],
+                        "headline-sm": ["Hanken Grotesk", "sans-serif"],
+                        "body-sm": ["Hanken Grotesk", "sans-serif"],
+                        "display-lg": ["Hanken Grotesk", "sans-serif"]
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}"/>
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="bg-background text-on-surface font-body-md antialiased overflow-x-hidden min-h-screen">
+
+    {% include "partials/_sidebar.html" %}
+
+    <div class="md:pl-sidebar-width flex flex-col min-h-screen transition-all duration-300">
+        <!-- TopNavBar -->
+        <header class="h-16 w-full sticky top-0 z-40 bg-surface border-b border-outline-variant flex justify-between items-center px-4 md:px-gutter no-print" id="top-nav">
+            <div class="flex items-center gap-3 shrink-0">
+                <button class="md:hidden p-2 text-primary hover:bg-surface-container-high rounded-full transition-colors" id="mobile-menu-btn" title="Abrir menú" type="button">
+                    <span class="material-symbols-outlined">menu</span>
+                </button>
+                <div class="hidden md:flex font-headline-md text-primary font-bold whitespace-nowrap">
+                    JUMBOX SaaS
+                </div>
+            </div>
+
+            <form action="{{ url_for('main.buscador') }}" method="get" class="flex-1 max-w-xl px-4 hidden md:block">
+                <div class="relative">
+                    <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none">search</span>
+                    <input id="global-search-input" name="q" value="{{ request.args.get('q', '') }}" class="w-full pl-10 pr-4 py-2 bg-surface-container-low border border-outline-variant rounded-full text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all placeholder:text-on-surface-variant/70" placeholder="Buscar productos, códigos de barra, clientes, proveedores... (Cmd+K)" type="text"/>
+                </div>
+            </form>
+
+            <div class="flex items-center gap-3 shrink-0">
+                <span class="hidden lg:inline-flex items-center gap-1.5 px-3 py-1 rounded-full font-label-sm text-xs font-semibold {% if usa_s3 %}bg-secondary-container text-on-secondary-container{% else %}bg-surface-container-high text-on-surface-variant{% endif %}" title="Almacenamiento de imágenes y comprobantes">
+                    <span class="material-symbols-outlined text-[16px]">cloud_done</span>
+                    <span>{% if usa_s3 %}AWS S3 Activo{% else %}Storage Local{% endif %}</span>
+                </span>
+
+                <a href="{{ url_for('ia.reposicion') }}" class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full font-label-sm text-xs font-semibold {% if estado_llm.habilitada %}bg-primary-container text-white{% else %}bg-surface-container-high text-on-surface-variant{% endif %}" title="Estado del asistente de reposición">
+                    <span class="material-symbols-outlined text-[16px]">psychology</span>
+                    <span>{% if estado_llm.habilitada %}LLM Activa{% else %}IA (Reglas){% endif %}</span>
+                </a>
+            </div>
+        </header>
+
+        <main class="p-4 md:p-gutter flex-1">
+            {% include "partials/_flash.html" %}
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    <div class="fixed inset-0 bg-on-surface/50 z-40 hidden md:hidden transition-opacity" id="sidebar-overlay"></div>
+
+    <script>
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('sidebar-overlay');
+        const mobileBtn = document.getElementById('mobile-menu-btn');
+        const closeBtn = document.getElementById('close-sidebar-btn');
+        const searchInput = document.getElementById('global-search-input');
+
+        function toggleSidebar() {
+            sidebar.classList.toggle('-translate-x-full');
+            overlay.classList.toggle('hidden');
+        }
+
+        if (mobileBtn) mobileBtn.addEventListener('click', toggleSidebar);
+        if (closeBtn) closeBtn.addEventListener('click', toggleSidebar);
+        if (overlay) overlay.addEventListener('click', toggleSidebar);
+
+        document.addEventListener('keydown', (e) => {
+            if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+                e.preventDefault();
+                if (searchInput) searchInput.focus();
+            }
+        });
+    </script>
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>

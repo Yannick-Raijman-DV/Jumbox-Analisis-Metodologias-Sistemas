@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}JUMBOX - Buscador General{% endblock %}
+{% block content %}
+<div class="mb-6">
+    <h2 class="text-2xl font-bold text-on-surface">Buscador Global</h2>
+    <p class="text-sm text-on-surface-variant">Consultá productos, códigos de barra, clientes, proveedores o número de ticket.</p>
+</div>
+
+<form method="get" class="mb-6 flex gap-2">
+    <input type="text" name="q" value="{{ q }}" autofocus placeholder="Ej: CocaCola, 7790895000997, Yannick, PepsiCo..." class="flex-1 rounded-xl border-outline-variant text-sm"/>
+    <button type="submit" class="bg-primary text-white px-5 py-2.5 rounded-xl font-semibold text-sm">Buscar</button>
+</form>
+
+{% if q %}
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm">
+    <div class="bg-white p-5 rounded-xl border border-outline-variant">
+        <h3 class="font-bold mb-3">Productos ({{ productos|length }})</h3>
+        <div class="space-y-2">
+            {% for p in productos %}
+            <div class="p-2.5 rounded-lg bg-surface-container-low flex justify-between items-center">
+                <div>
+                    <p class="font-semibold">{{ p.nombre }}</p>
+                    <p class="font-label-sm text-xs text-on-surface-variant">{{ p.sku }} • Góndola: {{ p.stock_gondola }}</p>
+                </div>
+                <span class="font-label-md font-bold text-primary">${{ "%.2f"|format(p.precio) }}</span>
+            </div>
+            {% else %}
+            <p class="text-xs text-on-surface-variant">Sin coincidencias.</p>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="bg-white p-5 rounded-xl border border-outline-variant">
+        <h3 class="font-bold mb-3">Clientes ({{ clientes|length }})</h3>
+        <div class="space-y-2">
+            {% for c in clientes %}
+            <div class="p-2.5 rounded-lg bg-surface-container-low flex justify-between items-center">
+                <div>
+                    <p class="font-semibold">{{ c.nombre_completo }}</p>
+                    <p class="font-label-sm text-xs text-on-surface-variant">DNI {{ c.dni }}</p>
+                </div>
+                <span class="font-label-md font-bold text-secondary">{{ c.puntos }} pts</span>
+            </div>
+            {% else %}
+            <p class="text-xs text-on-surface-variant">Sin coincidencias.</p>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="bg-white p-5 rounded-xl border border-outline-variant">
+        <h3 class="font-bold mb-3">Proveedores ({{ proveedores|length }})</h3>
+        <div class="space-y-2">
+            {% for pr in proveedores %}
+            <div class="p-2.5 rounded-lg bg-surface-container-low flex justify-between items-center">
+                <div>
+                    <p class="font-semibold">{{ pr.nombre }}</p>
+                    <p class="font-label-sm text-xs text-on-surface-variant">CUIT {{ pr.cuit }}</p>
+                </div>
+                <span class="font-label-md font-bold text-error">${{ "%.2f"|format(pr.deuda) }}</span>
+            </div>
+            {% else %}
+            <p class="text-xs text-on-surface-variant">Sin coincidencias.</p>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

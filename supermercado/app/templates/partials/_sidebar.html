@@ -1,0 +1,117 @@
+<aside class="w-sidebar-width fixed left-0 top-0 bg-primary-container dark:bg-on-primary-fixed border-r border-outline-variant dark:border-outline shadow-sm flex flex-col h-full z-50 transform -translate-x-full md:translate-x-0 transition-transform duration-300 no-print" id="sidebar">
+    <!-- Logo & Branding -->
+    <div class="p-6 flex items-center justify-between border-b border-primary/20">
+        <a href="{{ url_for('main.index') }}" class="flex items-center gap-3">
+            <div class="w-10 h-10 bg-white rounded-lg flex items-center justify-center p-1 shadow-sm">
+                <img alt="Jumbox Logo" class="w-full h-full object-contain" src="{{ url_for('static', filename='img/logo.png') }}"/>
+            </div>
+            <div>
+                <h1 class="font-display-lg text-[20px] leading-tight text-white font-bold tracking-tight">JUMBOX</h1>
+                <p class="font-label-sm text-xs text-secondary-fixed-dim uppercase">Supermarket SaaS</p>
+            </div>
+        </a>
+        <button class="md:hidden text-white/70 hover:text-white" id="close-sidebar-btn" type="button">
+            <span class="material-symbols-outlined">close</span>
+        </button>
+    </div>
+
+    {% if current_user.is_authenticated and current_user.tiene_rol('Admin', 'Cajero') %}
+    <!-- Quick CTA: Nueva Venta -->
+    <div class="px-4 py-4">
+        <a href="{{ url_for('pos.venta') }}" class="w-full bg-[#006c49] text-white py-3 px-4 rounded-xl font-label-md text-sm font-bold flex items-center justify-center gap-2 hover:bg-[#10b981] transition-all shadow-sm">
+            <span class="material-symbols-outlined fill text-[20px]">add_circle</span>
+            <span>Nueva Venta (POS)</span>
+        </a>
+    </div>
+    {% endif %}
+
+    <!-- Navigation Links -->
+    <nav class="flex-1 overflow-y-auto px-3 py-2 space-y-1 font-body-md text-sm">
+        <a class="flex items-center gap-3 px-3 py-2.5 rounded-xl border-l-4 transition-all {% if request.blueprint == 'main' and request.endpoint == 'main.index' %}border-secondary-fixed bg-surface-tint text-white font-semibold{% else %}border-transparent text-white/80 hover:bg-surface-tint/60 hover:text-white{% endif %}" href="{{ url_for('main.index') }}">
+            <span class="material-symbols-outlined">dashboard</span>
+            <span>Dashboard Principal</span>
+        </a>
+
+        {% if current_user.is_authenticated and current_user.tiene_rol('Admin', 'Cajero') %}
+        <a class="flex items-center gap-3 px-3 py-2.5 rounded-xl border-l-4 transition-all {% if request.blueprint == 'pos' %}border-secondary-fixed bg-surface-tint text-white font-semibold{% else %}border-transparent text-white/80 hover:bg-surface-tint/60 hover:text-white{% endif %}" href="{{ url_for('pos.venta') }}">
+            <span class="material-symbols-outlined">point_of_sale</span>
+            <span>Caja / POS</span>
+        </a>
+        {% endif %}
+
+        {% if current_user.is_authenticated and current_user.tiene_rol('Admin', 'Operario') %}
+        <a class="flex items-center gap-3 px-3 py-2.5 rounded-xl border-l-4 transition-all {% if request.blueprint == 'stock' and request.endpoint != 'stock.mermas' %}border-secondary-fixed bg-surface-tint text-white font-semibold{% else %}border-transparent text-white/80 hover:bg-surface-tint/60 hover:text-white{% endif %}" href="{{ url_for('stock.index') }}">
+            <span class="material-symbols-outlined">inventory_2</span>
+            <span>Inventario y Stock</span>
+        </a>
+
+        <a class="flex items-center gap-3 px-3 py-2.5 rounded-xl border-l-4 transition-all {% if request.endpoint == 'stock.mermas' %}border-secondary-fixed bg-surface-tint text-white font-semibold{% else %}border-transparent text-white/80 hover:bg-surface-tint/60 hover:text-white{% endif %}" href="{{ url_for('stock.mermas') }}">
+            <span class="material-symbols-outlined">delete_sweep</span>
+            <span>Mermas y Bajas</span>
+        </a>
+        {% endif %}
+
+        <a class="flex items-center gap-3 px-3 py-2.5 rounded-xl border-l-4 transition-all {% if request.blueprint == 'logistica' %}border-secondary-fixed bg-surface-tint text-white font-semibold{% else %}border-transparent text-white/80 hover:bg-surface-tint/60 hover:text-white{% endif %}" href="{{ url_for('logistica.index') }}">
+            <span class="material-symbols-outlined">two_wheeler</span>
+            <span class="flex-1">Envíos / Delivery</span>
+            {% if envios_activos %}
+            <span class="bg-secondary-container text-on-secondary-container text-[11px] font-bold px-2 py-0.5 rounded-full">{{ envios_activos }}</span>
+            {% endif %}
+        </a>
+
+        {% if current_user.is_authenticated and current_user.tiene_rol('Admin', 'Operario') %}
+        <a class="flex items-center gap-3 px-3 py-2.5 rounded-xl border-l-4 transition-all {% if request.blueprint == 'proveedores' %}border-secondary-fixed bg-surface-tint text-white font-semibold{% else %}border-transparent text-white/80 hover:bg-surface-tint/60 hover:text-white{% endif %}" href="{{ url_for('proveedores.index') }}">
+            <span class="material-symbols-outlined">local_shipping</span>
+            <span>Proveedores y Deudas</span>
+        </a>
+
+        <a class="flex items-center gap-3 px-3 py-2.5 rounded-xl border-l-4 transition-all {% if request.blueprint == 'ia' %}border-secondary-fixed bg-surface-tint text-white font-semibold{% else %}border-transparent text-white/80 hover:bg-surface-tint/60 hover:text-white{% endif %}" href="{{ url_for('ia.reposicion') }}">
+            <span class="material-symbols-outlined">psychology</span>
+            <span class="flex-1">Reposición con IA</span>
+            <span class="text-[10px] font-label-sm uppercase px-1.5 py-0.5 rounded bg-white/15 text-secondary-fixed">LLM</span>
+        </a>
+        {% endif %}
+
+        {% if current_user.is_authenticated and current_user.tiene_rol('Admin', 'Cajero') %}
+        <a class="flex items-center gap-3 px-3 py-2.5 rounded-xl border-l-4 transition-all {% if request.blueprint == 'clientes' %}border-secondary-fixed bg-surface-tint text-white font-semibold{% else %}border-transparent text-white/80 hover:bg-surface-tint/60 hover:text-white{% endif %}" href="{{ url_for('clientes.index') }}">
+            <span class="material-symbols-outlined">group</span>
+            <span>Clientes y Puntos</span>
+        </a>
+        {% endif %}
+
+        <a class="flex items-center gap-3 px-3 py-2.5 rounded-xl border-l-4 transition-all {% if request.endpoint == 'main.buscador' %}border-secondary-fixed bg-surface-tint text-white font-semibold{% else %}border-transparent text-white/80 hover:bg-surface-tint/60 hover:text-white{% endif %}" href="{{ url_for('main.buscador') }}">
+            <span class="material-symbols-outlined">search</span>
+            <span>Buscador General</span>
+        </a>
+
+        {% if current_user.is_authenticated and current_user.tiene_rol('Admin') %}
+        <a class="flex items-center gap-3 px-3 py-2.5 rounded-xl border-l-4 transition-all {% if request.endpoint == 'auth.gestionar_usuarios' %}border-secondary-fixed bg-surface-tint text-white font-semibold{% else %}border-transparent text-white/80 hover:bg-surface-tint/60 hover:text-white{% endif %}" href="{{ url_for('auth.gestionar_usuarios') }}">
+            <span class="material-symbols-outlined">manage_accounts</span>
+            <span>Usuarios y Roles</span>
+        </a>
+        {% endif %}
+    </nav>
+
+    <!-- User Footer -->
+    {% if current_user.is_authenticated %}
+    <div class="p-4 border-t border-primary/20 space-y-2">
+        <div class="flex items-center gap-3 px-2 py-1 text-white">
+            {% if current_user.foto_url %}
+            <img src="{{ current_user.foto_url }}" alt="{{ current_user.nombre }}" class="w-9 h-9 rounded-full object-cover border border-white/30"/>
+            {% else %}
+            <div class="w-9 h-9 rounded-full bg-secondary text-white font-label-md font-bold flex items-center justify-center text-xs">
+                {{ current_user.iniciales }}
+            </div>
+            {% endif %}
+            <div class="min-w-0 flex-1">
+                <p class="text-sm font-semibold truncate">{{ current_user.nombre }}</p>
+                <p class="text-[11px] font-label-sm text-secondary-fixed-dim uppercase">{{ current_user.rol_nombre }}</p>
+            </div>
+        </div>
+        <a class="flex items-center gap-3 px-3 py-2 rounded-xl text-white/80 hover:bg-error/80 hover:text-white transition-all text-sm" href="{{ url_for('auth.logout') }}">
+            <span class="material-symbols-outlined text-[18px]">logout</span>
+            <span>Cerrar Sesión</span>
+        </a>
+    </div>
+    {% endif %}
+</aside>

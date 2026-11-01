@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}JUMBOX - Error {{ codigo }}{% endblock %}
+{% block content %}
+<div class="bg-white p-10 rounded-2xl border border-outline-variant shadow-sm text-center max-w-lg mx-auto my-12">
+    <div class="w-16 h-16 rounded-full bg-error-container text-error flex items-center justify-center mx-auto mb-4">
+        <span class="material-symbols-outlined text-4xl">gpp_maybe</span>
+    </div>
+    <p class="font-label-md text-xs uppercase text-error font-bold tracking-wider">Código HTTP {{ codigo }}</p>
+    <h2 class="font-headline-sm text-2xl font-bold text-on-surface mt-1 mb-2">{{ titulo }}</h2>
+    <p class="text-on-surface-variant text-sm mb-6">{{ mensaje }}</p>
+    <a href="{{ url_for('main.index') }}" class="inline-flex items-center gap-2 bg-primary text-white px-5 py-2.5 rounded-xl font-label-md text-sm hover:bg-primary-container transition-colors">
+        <span class="material-symbols-outlined text-[18px]">arrow_back</span>
+        <span>Volver al Inicio</span>
+    </a>
+</div>
+{% endblock %}

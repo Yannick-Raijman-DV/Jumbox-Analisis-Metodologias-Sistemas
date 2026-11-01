@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+{% block title %}JUMBOX - Dashboard Principal{% endblock %}
+{% block content %}
+<div class="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <div>
+        <h2 class="text-2xl text-on-surface font-bold">Dashboard Principal</h2>
+        <p class="text-sm text-on-surface-variant mt-0.5">Métricas operativas en vivo desde SQLite (migrado de supermercado.sql).</p>
+    </div>
+    <div class="flex gap-2">
+        {% if current_user.tiene_rol('Admin', 'Operario') %}
+        <a href="{{ url_for('ia.reposicion') }}" class="bg-primary text-white px-4 py-2 rounded-xl font-label-md text-xs font-semibold hover:bg-primary-container transition-colors shadow-sm flex items-center gap-2">
+            <span class="material-symbols-outlined text-[18px]">psychology</span>
+            <span>Sugerencias IA</span>
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+<!-- KPI Cards (Bento Grid) -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+    <div class="bg-white p-5 rounded-xl border border-outline-variant shadow-sm">
+        <p class="font-label-md text-xs text-on-surface-variant uppercase tracking-wider">Facturación Acumulada</p>
+        <h3 class="font-label-md text-2xl font-bold text-on-surface mt-2">${{ "%.2f"|format(ventas_totales) }}</h3>
+        <p class="text-xs text-secondary font-semibold mt-1">Hoy: ${{ "%.2f"|format(ventas_hoy_total) }} ({{ ventas_hoy_cantidad }} tickets)</p>
+    </div>
+
+    <div class="bg-white p-5 rounded-xl border border-outline-variant shadow-sm">
+        <p class="font-label-md text-xs text-on-surface-variant uppercase tracking-wider">Envíos Pendientes</p>
+        <h3 class="font-label-md text-2xl font-bold text-on-surface mt-2">{{ envios_pendientes }}</h3>
+        <a href="{{ url_for('logistica.index') }}" class="text-xs text-primary hover:underline mt-1 inline-block">Ver tablero de logística →</a>
+    </div>
+
+    <div class="bg-white p-5 rounded-xl border border-[#f59e0b] shadow-sm relative overflow-hidden">
+        <div class="absolute top-0 left-0 w-1.5 h-full bg-[#f59e0b]"></div>
+        <p class="font-label-md text-xs text-[#6c4300] uppercase tracking-wider pl-2">Caducidad (≤7 días / Vencidos)</p>
+        <h3 class="font-label-md text-2xl font-bold text-on-surface mt-2 pl-2">{{ alertas_vencimiento }} por vencer • <span class="text-error">{{ vencidos }} vencidos</span></h3>
+        <p class="text-xs text-on-surface-variant mt-1 pl-2">Semáforo FEFO activo</p>
+    </div>
+
+    <div class="bg-white p-5 rounded-xl border border-outline-variant shadow-sm">
+        <p class="font-label-md text-xs text-on-surface-variant uppercase tracking-wider">Deuda a Proveedores</p>
+        <h3 class="font-label-md text-2xl font-bold {% if deuda_total > 0 %}text-error{% else %}text-on-surface{% endif %} mt-2">${{ "%.2f"|format(deuda_total) }}</h3>
+        <p class="text-xs text-on-surface-variant mt-1">Cuentas corrientes activas</p>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- Left 2 cols -->
+    <div class="lg:col-span-2 space-y-6">
+        <div class="bg-white rounded-xl border border-outline-variant shadow-sm overflow-hidden">
+            <div class="p-4 border-b border-outline-variant flex justify-between items-center bg-surface-container-low/50">
+                <h3 class="font-bold text-on-surface flex items-center gap-2">
+                    <span class="material-symbols-outlined text-error">warning</span>
+                    <span>Productos Críticos (Vencimiento y Bajo Stock)</span>
+                </h3>
+                {% if current_user.tiene_rol('Admin', 'Operario') %}
+                <a href="{{ url_for('stock.index') }}" class="text-primary font-label-md text-xs hover:underline">Ir a Stock →</a>
+                {% endif %}
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse text-sm">
+                    <thead>
+                        <tr class="bg-surface-container-low text-on-surface-variant font-label-md text-xs uppercase border-b border-outline-variant">
+                            <th class="p-3.5">Producto</th>
+                            <th class="p-3.5">SKU</th>
+                            <th class="p-3.5">Vencimiento</th>
+                            <th class="p-3.5 text-right">Góndola / Dep.</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for p in criticos %}
+                        <tr class="border-b border-outline-variant/60 hover:bg-surface-container-low/30">
+                            <td class="p-3.5 flex items-center gap-3">
+                                {% if p.foto_key and url_imagen(p.foto_key) %}
+                                <img src="{{ url_imagen(p.foto_key) }}" alt="{{ p.nombre }}" class="w-9 h-9 rounded-lg object-cover border"/>
+                                {% else %}
+                                <div class="w-9 h-9 bg-surface-variant rounded-lg flex items-center justify-center">
+                                    <span class="material-symbols-outlined text-on-surface-variant text-lg">inventory_2</span>
+                                </div>
+                                {% endif %}
+                                <span class="font-semibold">{{ p.nombre }}</span>
+                            </td>
+                            <td class="p-3.5 font-label-md text-xs text-on-surface-variant">{{ p.sku }}</td>
+                            <td class="p-3.5">
+                                {% if p.estado_vencimiento == 'vencido' %}
+                                <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#ba1a1a]/15 text-[#ba1a1a]">Vencido ({{ p.fecha_vencimiento }})</span>
+                                {% elif p.estado_vencimiento == 'por_vencer' %}
+                                <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#f59e0b]/20 text-[#6c4300]">Vence en {{ p.dias_para_vencer }}d</span>
+                                {% else %}
+                                <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-[#006c49]">{{ p.fecha_vencimiento }}</span>
+                                {% endif %}
+                            </td>
+                            <td class="p-3.5 text-right font-label-md font-bold {% if p.bajo_minimo %}text-error{% endif %}">
+                                {{ p.stock_gondola }} / {{ p.stock_deposito }}
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="4" class="p-6 text-center text-on-surface-variant">No hay alertas críticas de stock.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Últimas Ventas -->
+        <div class="bg-white rounded-xl border border-outline-variant shadow-sm overflow-hidden">
+            <div class="p-4 border-b border-outline-variant flex justify-between items-center">
+                <h3 class="font-bold text-on-surface">Últimas Ventas Registradas</h3>
+                {% if current_user.tiene_rol('Admin', 'Cajero') %}
+                <a href="{{ url_for('pos.venta') }}" class="text-secondary font-label-md text-xs font-bold hover:underline">+ Nueva Venta</a>
+                {% endif %}
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse text-sm">
+                    <thead>
+                        <tr class="bg-surface-container-low text-on-surface-variant font-label-md text-xs uppercase border-b border-outline-variant">
+                            <th class="p-3.5">Ticket</th>
+                            <th class="p-3.5">Fecha</th>
+                            <th class="p-3.5">Cliente</th>
+                            <th class="p-3.5">Cajero</th>
+                            <th class="p-3.5 text-right">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for v in ultimas_ventas %}
+                        <tr class="border-b border-outline-variant/60">
+                            <td class="p-3.5 font-label-md font-bold text-primary">#{{ v.id }}</td>
+                            <td class="p-3.5 text-xs text-on-surface-variant font-label-sm">{{ v.fecha.strftime('%d/%m/%Y %H:%M') }}</td>
+                            <td class="p-3.5">{{ v.cliente.nombre_completo if v.cliente else 'Consumidor Final' }}</td>
+                            <td class="p-3.5 text-xs text-on-surface-variant">{{ v.usuario.nombre if v.usuario else '-' }}</td>
+                            <td class="p-3.5 text-right font-label-md font-bold">${{ "%.2f"|format(v.total) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right col -->
+    <div class="space-y-6">
+        <div class="bg-primary-container text-white p-6 rounded-xl shadow-md space-y-3">
+            <h3 class="font-bold text-lg">Accesos Rápidos</h3>
+            {% if current_user.tiene_rol('Admin', 'Cajero') %}
+            <a href="{{ url_for('pos.venta') }}" class="w-full flex items-center justify-between bg-white text-primary-container p-3.5 rounded-xl font-semibold text-sm hover:bg-surface">
+                <span class="flex items-center gap-2"><span class="material-symbols-outlined text-secondary">point_of_sale</span> Terminal POS</span>
+                <span class="material-symbols-outlined">arrow_forward</span>
+            </a>
+            {% endif %}
+            {% if current_user.tiene_rol('Admin', 'Operario') %}
+            <a href="{{ url_for('stock.index') }}" class="w-full flex items-center justify-between bg-white/10 text-white p-3.5 rounded-xl font-semibold text-sm hover:bg-white/20">
+                <span class="flex items-center gap-2"><span class="material-symbols-outlined">inventory_2</span> Stock y Fotos S3</span>
+                <span class="material-symbols-outlined">arrow_forward</span>
+            </a>
+            <a href="{{ url_for('ia.reposicion') }}" class="w-full flex items-center justify-between bg-white/10 text-white p-3.5 rounded-xl font-semibold text-sm hover:bg-white/20">
+                <span class="flex items-center gap-2"><span class="material-symbols-outlined">psychology</span> Reposición con LLM</span>
+                <span class="material-symbols-outlined">arrow_forward</span>
+            </a>
+            {% endif %}
+        </div>
+
+        <div class="bg-white p-5 rounded-xl border border-outline-variant shadow-sm">
+            <h3 class="font-bold text-on-surface mb-3">Últimos Movimientos de Stock</h3>
+            <div class="space-y-3 text-xs">
+                {% for m in ultimos_movimientos %}
+                <div class="flex items-start justify-between gap-2 pb-2 border-b border-outline-variant/50">
+                    <div>
+                        <p class="font-semibold text-on-surface">{{ m.producto.nombre if m.producto else 'Producto' }} ({{ m.cantidad }} u.)</p>
+                        <p class="text-on-surface-variant">{{ m.origen }} → {{ m.destino }}</p>
+                    </div>
+                    <span class="font-label-sm px-2 py-0.5 rounded bg-surface-container-high text-primary font-bold">{{ m.tipo }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

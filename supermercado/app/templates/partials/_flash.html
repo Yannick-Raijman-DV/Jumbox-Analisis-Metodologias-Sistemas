@@ -1,0 +1,23 @@
+{% with mensajes = get_flashed_messages(with_categories=true) %}
+{% if mensajes %}
+<div class="space-y-2 mb-6 no-print">
+    {% for categoria, texto in mensajes %}
+    <div class="flex items-center justify-between gap-3 px-4 py-3 rounded-xl border text-sm font-medium shadow-sm
+        {% if categoria == 'error' %}bg-error-container text-on-error-container border-error/40
+        {% elif categoria == 'warning' %}bg-tertiary-fixed text-on-tertiary-fixed border-tertiary-container/40
+        {% elif categoria == 'success' %}bg-secondary-container/70 text-on-secondary-fixed border-secondary/30
+        {% else %}bg-primary-fixed text-on-primary-fixed border-primary/30{% endif %}">
+        <div class="flex items-center gap-2">
+            <span class="material-symbols-outlined text-[20px]">
+                {% if categoria == 'error' %}error{% elif categoria == 'warning' %}warning{% elif categoria == 'success' %}check_circle{% else %}info{% endif %}
+            </span>
+            <span>{{ texto }}</span>
+        </div>
+        <button type="button" onclick="this.parentElement.remove()" class="opacity-70 hover:opacity-100">
+            <span class="material-symbols-outlined text-[18px]">close</span>
+        </button>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+{% endwith %}

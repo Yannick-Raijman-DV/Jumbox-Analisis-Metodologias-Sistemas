@@ -1,0 +1,676 @@
+{
+  "categorias_productos": [
+    {
+      "id_categoria_producto": 1,
+      "nombre_categoria": "Bebidas"
+    },
+    {
+      "id_categoria_producto": 4,
+      "nombre_categoria": "Chicles"
+    },
+    {
+      "id_categoria_producto": 2,
+      "nombre_categoria": "Snacks"
+    }
+  ],
+  "clientes": [
+    {
+      "id_cliente": 1,
+      "nombre_cliente": "Nicolas",
+      "apellido": "De cabo",
+      "dni_cliente": "47698991",
+      "puntos_cliente": 0
+    },
+    {
+      "id_cliente": 2,
+      "nombre_cliente": "Yannick",
+      "apellido": "Raijman",
+      "dni_cliente": "45415500",
+      "puntos_cliente": 0
+    },
+    {
+      "id_cliente": 3,
+      "nombre_cliente": "prueba",
+      "apellido": "prueba",
+      "dni_cliente": "87463541",
+      "puntos_cliente": 0
+    },
+    {
+      "id_cliente": 4,
+      "nombre_cliente": "lucas",
+      "apellido": "perez",
+      "dni_cliente": "12345678",
+      "puntos_cliente": 0
+    }
+  ],
+  "depositos": [
+    {
+      "id_deposito": 1,
+      "nombre_deposito": "Depósito Central"
+    }
+  ],
+  "historial_movimientos": [
+    {
+      "id_movimiento": 5,
+      "fecha_movimiento": "2026-07-12 21:02:26",
+      "fk_producto": 2,
+      "cantidad": 1,
+      "tipo_movimiento": "INGRESO_COMPRA",
+      "origen": "Proveedor",
+      "destino": "Depósito Central",
+      "fk_usuario": 9
+    },
+    {
+      "id_movimiento": 6,
+      "fecha_movimiento": "2026-07-12 21:02:27",
+      "fk_producto": 3,
+      "cantidad": 1,
+      "tipo_movimiento": "INGRESO_COMPRA",
+      "origen": "Proveedor",
+      "destino": "Depósito Central",
+      "fk_usuario": 9
+    },
+    {
+      "id_movimiento": 7,
+      "fecha_movimiento": "2026-07-12 21:02:41",
+      "fk_producto": 2,
+      "cantidad": 1,
+      "tipo_movimiento": "TRASLADO_GONDOLA",
+      "origen": "Depósito Central",
+      "destino": "Góndola",
+      "fk_usuario": 9
+    },
+    {
+      "id_movimiento": 8,
+      "fecha_movimiento": "2026-07-12 21:02:46",
+      "fk_producto": 3,
+      "cantidad": 1,
+      "tipo_movimiento": "TRASLADO_GONDOLA",
+      "origen": "Depósito Central",
+      "destino": "Góndola",
+      "fk_usuario": 9
+    },
+    {
+      "id_movimiento": 9,
+      "fecha_movimiento": "2026-07-12 21:03:08",
+      "fk_producto": 5,
+      "cantidad": 6,
+      "tipo_movimiento": "INGRESO_COMPRA",
+      "origen": "Proveedor",
+      "destino": "Depósito Central",
+      "fk_usuario": 9
+    },
+    {
+      "id_movimiento": 10,
+      "fecha_movimiento": "2026-07-12 21:03:16",
+      "fk_producto": 5,
+      "cantidad": 1,
+      "tipo_movimiento": "TRASLADO_GONDOLA",
+      "origen": "Depósito Central",
+      "destino": "Góndola",
+      "fk_usuario": 9
+    },
+    {
+      "id_movimiento": 11,
+      "fecha_movimiento": "2026-07-16 14:33:43",
+      "fk_producto": 1,
+      "cantidad": 1,
+      "tipo_movimiento": "INGRESO_COMPRA",
+      "origen": "Proveedor",
+      "destino": "Depósito Central",
+      "fk_usuario": 9
+    },
+    {
+      "id_movimiento": 12,
+      "fecha_movimiento": "2026-07-16 14:33:44",
+      "fk_producto": 2,
+      "cantidad": 1,
+      "tipo_movimiento": "INGRESO_COMPRA",
+      "origen": "Proveedor",
+      "destino": "Depósito Central",
+      "fk_usuario": 9
+    },
+    {
+      "id_movimiento": 13,
+      "fecha_movimiento": "2026-07-16 14:34:11",
+      "fk_producto": 1,
+      "cantidad": 1,
+      "tipo_movimiento": "TRASLADO_GONDOLA",
+      "origen": "Depósito Central",
+      "destino": "Góndola",
+      "fk_usuario": 9
+    },
+    {
+      "id_movimiento": 14,
+      "fecha_movimiento": "2026-07-16 14:35:18",
+      "fk_producto": 2,
+      "cantidad": 4,
+      "tipo_movimiento": "EGRESO_VENTA",
+      "origen": "Góndola",
+      "destino": "Cliente (Venta)",
+      "fk_usuario": 10
+    }
+  ],
+  "pedidos_proveedor": [
+    {
+      "id_pedido_proveedor": 1,
+      "fecha_pedido": "2026-07-09 20:22:13",
+      "fk_usuario": 9,
+      "fk_proveedor": 1
+    },
+    {
+      "id_pedido_proveedor": 2,
+      "fecha_pedido": "2026-07-12 16:18:20",
+      "fk_usuario": 9,
+      "fk_proveedor": 1
+    },
+    {
+      "id_pedido_proveedor": 3,
+      "fecha_pedido": "2026-07-12 16:59:32",
+      "fk_usuario": 9,
+      "fk_proveedor": 2
+    },
+    {
+      "id_pedido_proveedor": 4,
+      "fecha_pedido": "2026-07-12 17:20:35",
+      "fk_usuario": 9,
+      "fk_proveedor": 1
+    },
+    {
+      "id_pedido_proveedor": 5,
+      "fecha_pedido": "2026-07-12 17:36:17",
+      "fk_usuario": 1,
+      "fk_proveedor": 1
+    },
+    {
+      "id_pedido_proveedor": 6,
+      "fecha_pedido": "2026-07-12 17:40:30",
+      "fk_usuario": 9,
+      "fk_proveedor": 1
+    },
+    {
+      "id_pedido_proveedor": 7,
+      "fecha_pedido": "2026-07-12 18:02:24",
+      "fk_usuario": 9,
+      "fk_proveedor": 1
+    },
+    {
+      "id_pedido_proveedor": 8,
+      "fecha_pedido": "2026-07-12 18:03:06",
+      "fk_usuario": 9,
+      "fk_proveedor": 2
+    },
+    {
+      "id_pedido_proveedor": 9,
+      "fecha_pedido": "2026-07-16 11:33:42",
+      "fk_usuario": 9,
+      "fk_proveedor": 1
+    }
+  ],
+  "pedidos_proveedor_productos": [
+    {
+      "id_pedido_proveedor_producto": 1,
+      "cantidad": 10,
+      "precio_unitario": 15,
+      "total": 150,
+      "fk_pedido_proveedor": 1,
+      "fk_producto": 1
+    },
+    {
+      "id_pedido_proveedor_producto": 2,
+      "cantidad": 1,
+      "precio_unitario": 10,
+      "total": 10,
+      "fk_pedido_proveedor": 2,
+      "fk_producto": 2
+    },
+    {
+      "id_pedido_proveedor_producto": 3,
+      "cantidad": 1,
+      "precio_unitario": 10,
+      "total": 10,
+      "fk_pedido_proveedor": 3,
+      "fk_producto": 5
+    },
+    {
+      "id_pedido_proveedor_producto": 4,
+      "cantidad": 3,
+      "precio_unitario": 5,
+      "total": 15,
+      "fk_pedido_proveedor": 4,
+      "fk_producto": 3
+    },
+    {
+      "id_pedido_proveedor_producto": 5,
+      "cantidad": 1,
+      "precio_unitario": 10,
+      "total": 10,
+      "fk_pedido_proveedor": 4,
+      "fk_producto": 2
+    },
+    {
+      "id_pedido_proveedor_producto": 6,
+      "cantidad": 10,
+      "precio_unitario": 100,
+      "total": 1000,
+      "fk_pedido_proveedor": 5,
+      "fk_producto": 1
+    },
+    {
+      "id_pedido_proveedor_producto": 7,
+      "cantidad": 2,
+      "precio_unitario": 10,
+      "total": 20,
+      "fk_pedido_proveedor": 6,
+      "fk_producto": 2
+    },
+    {
+      "id_pedido_proveedor_producto": 8,
+      "cantidad": 1,
+      "precio_unitario": 5,
+      "total": 5,
+      "fk_pedido_proveedor": 6,
+      "fk_producto": 3
+    },
+    {
+      "id_pedido_proveedor_producto": 9,
+      "cantidad": 1,
+      "precio_unitario": 10,
+      "total": 10,
+      "fk_pedido_proveedor": 7,
+      "fk_producto": 2
+    },
+    {
+      "id_pedido_proveedor_producto": 10,
+      "cantidad": 1,
+      "precio_unitario": 5,
+      "total": 5,
+      "fk_pedido_proveedor": 7,
+      "fk_producto": 3
+    },
+    {
+      "id_pedido_proveedor_producto": 11,
+      "cantidad": 6,
+      "precio_unitario": 10,
+      "total": 60,
+      "fk_pedido_proveedor": 8,
+      "fk_producto": 5
+    },
+    {
+      "id_pedido_proveedor_producto": 12,
+      "cantidad": 1,
+      "precio_unitario": 15,
+      "total": 15,
+      "fk_pedido_proveedor": 9,
+      "fk_producto": 1
+    },
+    {
+      "id_pedido_proveedor_producto": 13,
+      "cantidad": 1,
+      "precio_unitario": 10,
+      "total": 10,
+      "fk_pedido_proveedor": 9,
+      "fk_producto": 2
+    }
+  ],
+  "productos": [
+    {
+      "id_producto": 1,
+      "nombre_producto": "CocaCola",
+      "precio_producto": 15,
+      "stock_actual_producto": 4,
+      "stock_minimo_producto": 1,
+      "fecha_vencimiento_producto": "2026-06-26",
+      "fk_categoria_producto": 1,
+      "fk_proveedor": 1,
+      "foto_archivo": "1.webp"
+    },
+    {
+      "id_producto": 2,
+      "nombre_producto": "Lays",
+      "precio_producto": 10,
+      "stock_actual_producto": 1,
+      "stock_minimo_producto": 1,
+      "fecha_vencimiento_producto": "2027-06-12",
+      "fk_categoria_producto": 2,
+      "fk_proveedor": 1,
+      "foto_archivo": "2.webp"
+    },
+    {
+      "id_producto": 3,
+      "nombre_producto": "Cheetos",
+      "precio_producto": 5,
+      "stock_actual_producto": 2,
+      "stock_minimo_producto": 1,
+      "fecha_vencimiento_producto": "2027-06-19",
+      "fk_categoria_producto": 2,
+      "fk_proveedor": 1,
+      "foto_archivo": "3.jpg"
+    },
+    {
+      "id_producto": 4,
+      "nombre_producto": "Topline",
+      "precio_producto": 5,
+      "stock_actual_producto": 3,
+      "stock_minimo_producto": 1,
+      "fecha_vencimiento_producto": "2027-06-18",
+      "fk_categoria_producto": 4,
+      "fk_proveedor": 1,
+      "foto_archivo": "4.webp"
+    },
+    {
+      "id_producto": 5,
+      "nombre_producto": "Pepsi",
+      "precio_producto": 10,
+      "stock_actual_producto": 5,
+      "stock_minimo_producto": 1,
+      "fecha_vencimiento_producto": "2027-07-17",
+      "fk_categoria_producto": 1,
+      "fk_proveedor": 2,
+      "foto_archivo": null
+    }
+  ],
+  "productos_depositos": [
+    {
+      "id_producto_deposito": 1,
+      "stock_producto_deposito": 10,
+      "fk_producto": 1,
+      "fk_deposito": 1
+    },
+    {
+      "id_producto_deposito": 2,
+      "stock_producto_deposito": 2,
+      "fk_producto": 2,
+      "fk_deposito": 1
+    },
+    {
+      "id_producto_deposito": 3,
+      "stock_producto_deposito": 1,
+      "fk_producto": 3,
+      "fk_deposito": 1
+    },
+    {
+      "id_producto_deposito": 4,
+      "stock_producto_deposito": 1,
+      "fk_producto": 4,
+      "fk_deposito": 1
+    },
+    {
+      "id_producto_deposito": 5,
+      "stock_producto_deposito": 5,
+      "fk_producto": 5,
+      "fk_deposito": 1
+    }
+  ],
+  "proveedores": [
+    {
+      "id_proveedor": 1,
+      "nombre_proveedor": "CocaCola Company",
+      "cuit_proveedor": "23676527989",
+      "deuda_proveedor": 0.0
+    },
+    {
+      "id_proveedor": 2,
+      "nombre_proveedor": "PepsiCo",
+      "cuit_proveedor": "76240124821",
+      "deuda_proveedor": 0.0
+    }
+  ],
+  "roles_usuarios": [
+    {
+      "id_rol_usuario": 1,
+      "rol_usuario": "Admin"
+    },
+    {
+      "id_rol_usuario": 3,
+      "rol_usuario": "Cajero"
+    },
+    {
+      "id_rol_usuario": 2,
+      "rol_usuario": "Operario"
+    }
+  ],
+  "usuarios": [
+    {
+      "id_usuario": 1,
+      "nombre_usuario": "administrador",
+      "contrasena": "1234",
+      "correo_usuario": "admin@gmail.com",
+      "fk_roles_usuarios": 1
+    },
+    {
+      "id_usuario": 9,
+      "nombre_usuario": "operario",
+      "contrasena": "$2a$10$HXGNPLOWrpyZeeZJTfyWrOrs37.eaxC5WmQetwkL6951IKSn4TSOa",
+      "correo_usuario": "operario@gmail.com",
+      "fk_roles_usuarios": 2
+    },
+    {
+      "id_usuario": 10,
+      "nombre_usuario": "cajero",
+      "contrasena": "$2a$10$FLudXACBIp2ox/dBmqIyy.q2CBYqnlgQ5OuBV0PxLSGAU8bEAONOW",
+      "correo_usuario": "cajero@gmail.com",
+      "fk_roles_usuarios": 3
+    },
+    {
+      "id_usuario": 11,
+      "nombre_usuario": "Fran",
+      "contrasena": "$2a$10$MfOrikLzzaYE7M2.xas3/u.ZQoT4nDQvb0QN9NCb6o47KTr22LV3K",
+      "correo_usuario": "fran@gmail.com",
+      "fk_roles_usuarios": 3
+    },
+    {
+      "id_usuario": 12,
+      "nombre_usuario": "ghamaliel",
+      "contrasena": "$2a$10$MBkmheDn3x8AAfJshTWM6uLSqUDyzBnVMg2Mm34847uInUArtwNii",
+      "correo_usuario": "ghama@gmail.com",
+      "fk_roles_usuarios": 3
+    },
+    {
+      "id_usuario": 13,
+      "nombre_usuario": "fran",
+      "contrasena": "$2a$10$wMBvj9aWl3KQbBHwKaJl5uoN13nOatzKVo/7Van/I.PAJZEBgkduW",
+      "correo_usuario": "frant@gmail.com",
+      "fk_roles_usuarios": 2
+    },
+    {
+      "id_usuario": 14,
+      "nombre_usuario": "tato",
+      "contrasena": "$2a$10$n43g.DfVTJ2WuUnD4vPiEOvs73ZxaYAyUz4YRNg.taEQt2D4Nj1ai",
+      "correo_usuario": "tatot@gmail.com",
+      "fk_roles_usuarios": 3
+    }
+  ],
+  "ventas": [
+    {
+      "id_venta": 1,
+      "fecha_venta": "2026-06-01 20:55:21",
+      "fk_usuario": 3,
+      "fk_cliente": null
+    },
+    {
+      "id_venta": 2,
+      "fecha_venta": "2026-06-21 17:48:21",
+      "fk_usuario": 10,
+      "fk_cliente": null
+    },
+    {
+      "id_venta": 3,
+      "fecha_venta": "2026-06-21 18:53:45",
+      "fk_usuario": 11,
+      "fk_cliente": null
+    },
+    {
+      "id_venta": 4,
+      "fecha_venta": "2026-06-22 11:54:38",
+      "fk_usuario": 10,
+      "fk_cliente": null
+    },
+    {
+      "id_venta": 5,
+      "fecha_venta": "2026-06-22 19:03:23",
+      "fk_usuario": 10,
+      "fk_cliente": 1
+    },
+    {
+      "id_venta": 6,
+      "fecha_venta": "2026-06-22 19:09:30",
+      "fk_usuario": 10,
+      "fk_cliente": 2
+    },
+    {
+      "id_venta": 7,
+      "fecha_venta": "2026-06-25 12:04:44",
+      "fk_usuario": 12,
+      "fk_cliente": 3
+    },
+    {
+      "id_venta": 8,
+      "fecha_venta": "2026-07-09 16:23:13",
+      "fk_usuario": 10,
+      "fk_cliente": 1
+    },
+    {
+      "id_venta": 9,
+      "fecha_venta": "2026-07-16 11:35:17",
+      "fk_usuario": 10,
+      "fk_cliente": null
+    },
+    {
+      "id_venta": 10,
+      "fecha_venta": "2026-07-28 04:25:09",
+      "fk_usuario": 10,
+      "fk_cliente": 4
+    }
+  ],
+  "ventas_productos": [
+    {
+      "id_venta_producto": 1,
+      "cantidad": 2,
+      "precio_unitario": 15,
+      "total": 30,
+      "fk_venta": 1,
+      "fk_producto": 1
+    },
+    {
+      "id_venta_producto": 2,
+      "cantidad": 1,
+      "precio_unitario": 15,
+      "total": 15,
+      "fk_venta": 2,
+      "fk_producto": 1
+    },
+    {
+      "id_venta_producto": 3,
+      "cantidad": 2,
+      "precio_unitario": 10,
+      "total": 20,
+      "fk_venta": 2,
+      "fk_producto": 2
+    },
+    {
+      "id_venta_producto": 4,
+      "cantidad": 1,
+      "precio_unitario": 10,
+      "total": 10,
+      "fk_venta": 3,
+      "fk_producto": 2
+    },
+    {
+      "id_venta_producto": 5,
+      "cantidad": 4,
+      "precio_unitario": 10,
+      "total": 40,
+      "fk_venta": 4,
+      "fk_producto": 2
+    },
+    {
+      "id_venta_producto": 6,
+      "cantidad": 1,
+      "precio_unitario": 15,
+      "total": 15,
+      "fk_venta": 4,
+      "fk_producto": 1
+    },
+    {
+      "id_venta_producto": 7,
+      "cantidad": 2,
+      "precio_unitario": 5,
+      "total": 10,
+      "fk_venta": 5,
+      "fk_producto": 3
+    },
+    {
+      "id_venta_producto": 8,
+      "cantidad": 2,
+      "precio_unitario": 15,
+      "total": 30,
+      "fk_venta": 6,
+      "fk_producto": 1
+    },
+    {
+      "id_venta_producto": 9,
+      "cantidad": 1,
+      "precio_unitario": 10,
+      "total": 10,
+      "fk_venta": 7,
+      "fk_producto": 2
+    },
+    {
+      "id_venta_producto": 10,
+      "cantidad": 1,
+      "precio_unitario": 15,
+      "total": 15,
+      "fk_venta": 7,
+      "fk_producto": 1
+    },
+    {
+      "id_venta_producto": 11,
+      "cantidad": 1,
+      "precio_unitario": 10,
+      "total": 10,
+      "fk_venta": 8,
+      "fk_producto": 2
+    },
+    {
+      "id_venta_producto": 12,
+      "cantidad": 7,
+      "precio_unitario": 5,
+      "total": 35,
+      "fk_venta": 8,
+      "fk_producto": 3
+    },
+    {
+      "id_venta_producto": 13,
+      "cantidad": 4,
+      "precio_unitario": 10,
+      "total": 40,
+      "fk_venta": 9,
+      "fk_producto": 2
+    },
+    {
+      "id_venta_producto": 14,
+      "cantidad": 2,
+      "precio_unitario": 15,
+      "total": 30,
+      "fk_venta": 10,
+      "fk_producto": 1
+    },
+    {
+      "id_venta_producto": 15,
+      "cantidad": 3,
+      "precio_unitario": 5,
+      "total": 15,
+      "fk_venta": 10,
+      "fk_producto": 3
+    },
+    {
+      "id_venta_producto": 16,
+      "cantidad": 2,
+      "precio_unitario": 5,
+      "total": 10,
+      "fk_venta": 10,
+      "fk_producto": 4
+    }
+  ]
+}

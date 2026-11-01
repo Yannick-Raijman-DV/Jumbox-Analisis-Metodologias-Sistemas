@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}JUMBOX - Logística y Envíos a Domicilio{% endblock %}
+{% block content %}
+<div class="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <div>
+        <h2 class="text-2xl font-bold text-on-surface">Logística y Envíos a Domicilio</h2>
+        <p class="text-sm text-on-surface-variant">Seguimiento de despachos generados en POS (En preparación → En camino → Entregado).</p>
+    </div>
+    <div class="flex flex-wrap gap-2 text-xs font-bold">
+        <a href="{{ url_for('logistica.index') }}" class="px-3.5 py-1.5 rounded-xl {% if not estado_actual %}bg-primary text-white{% else %}bg-white border border-outline-variant{% endif %}">
+            Todos ({{ contadores.todos }})
+        </a>
+        <a href="{{ url_for('logistica.index', estado='En preparación') }}" class="px-3.5 py-1.5 rounded-xl {% if estado_actual == 'En preparación' %}bg-[#f59e0b] text-white{% else %}bg-white border border-outline-variant{% endif %}">
+            En preparación ({{ contadores.preparacion }})
+        </a>
+        <a href="{{ url_for('logistica.index', estado='En camino') }}" class="px-3.5 py-1.5 rounded-xl {% if estado_actual == 'En camino' %}bg-primary-container text-white{% else %}bg-white border border-outline-variant{% endif %}">
+            En camino ({{ contadores.camino }})
+        </a>
+        <a href="{{ url_for('logistica.index', estado='Entregado') }}" class="px-3.5 py-1.5 rounded-xl {% if estado_actual == 'Entregado' %}bg-secondary text-white{% else %}bg-white border border-outline-variant{% endif %}">
+            Entregados ({{ contadores.entregado }})
+        </a>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    {% for e in envios %}
+    <div class="bg-white p-5 rounded-xl border border-outline-variant shadow-sm flex flex-col justify-between space-y-4">
+        <div>
+            <div class="flex items-center justify-between mb-2">
+                <span class="font-label-md font-bold text-primary">Envío #{{ e.id }} (Ticket #{{ e.venta_id }})</span>
+                <span class="px-2.5 py-0.5 rounded-full text-xs font-bold
+                    {% if e.estado == 'Entregado' %}bg-secondary-container text-on-secondary-container
+                    {% elif e.estado == 'En camino' %}bg-primary-fixed text-primary
+                    {% else %}bg-[#f59e0b]/20 text-[#6c4300]{% endif %}">
+                    {{ e.estado }}
+                </span>
+            </div>
+            <p class="font-bold text-on-surface">{{ e.direccion }}</p>
+            <p class="text-xs text-on-surface-variant">
+                Cliente: {{ e.venta.cliente.nombre_completo if e.venta and e.venta.cliente else 'Consumidor Final' }}
+                {% if e.telefono %} • Tel: {{ e.telefono }}{% endif %}
+            </p>
+            {% if e.observaciones %}
+            <p class="text-xs italic text-on-surface-variant mt-1">«{{ e.observaciones }}»</p>
+            {% endif %}
+        </div>
+
+        {% if e.estado != 'Entregado' %}
+        <form method="post" action="{{ url_for('logistica.actualizar_estado', envio_id=e.id) }}" class="pt-3 border-t border-outline-variant space-y-2 text-xs">
+            <div class="grid grid-cols-2 gap-2">
+                <input type="text" name="repartidor" value="{{ e.repartidor or '' }}" placeholder="Repartidor..." class="rounded-lg border-outline-variant text-xs"/>
+                <select name="estado" class="rounded-lg border-outline-variant text-xs">
+                    {% for est in estados %}
+                    <option value="{{ est }}" {% if e.estado == est %}selected{% endif %}>{{ est }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="w-full bg-primary text-white py-2 rounded-lg font-bold hover:bg-primary-container">
+                Actualizar Estado
+            </button>
+        </form>
+        {% else %}
+        <div class="pt-3 border-t border-outline-variant text-xs text-secondary font-semibold flex justify-between">
+            <span>Repartidor: {{ e.repartidor or 'Sucursal' }}</span>
+            <span>Entregado ✓</span>
+        </div>
+        {% endif %}
+    </div>
+    {% else %}
+    <div class="col-span-full bg-white p-8 rounded-xl border border-outline-variant text-center text-on-surface-variant">
+        No hay envíos en este estado.
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

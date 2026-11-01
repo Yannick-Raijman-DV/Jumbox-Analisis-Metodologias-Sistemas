@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+{% block title %}JUMBOX - Punto de Venta (POS){% endblock %}
+{% block content %}
+<div class="mb-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+    <div>
+        <h2 class="text-2xl font-bold text-on-surface">Punto de Venta (POS)</h2>
+        <p class="text-sm text-on-surface-variant">Terminal split-screen 60/40 con lector de códigos de barra, fidelización y despacho a domicilio.</p>
+    </div>
+    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-label-sm font-bold bg-secondary-container text-on-secondary-container">
+        <span class="w-2 h-2 rounded-full bg-secondary"></span>
+        Caja Activa • {{ current_user.nombre }}
+    </span>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+    <!-- Catálogo 60% (7 cols) -->
+    <div class="lg:col-span-7 space-y-4">
+        <div class="bg-white p-4 rounded-xl border border-outline-variant shadow-sm space-y-3">
+            <div class="relative">
+                <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">barcode_scanner</span>
+                <input id="pos-buscar" type="text" autofocus placeholder="Escanear código de barras o buscar producto (Enter agrega directo)..." class="w-full pl-10 pr-4 py-2.5 rounded-xl border-outline-variant text-sm font-label-sm"/>
+            </div>
+            <div class="flex flex-wrap gap-2">
+                <button type="button" data-cat="todas" class="pos-cat-btn activo px-3 py-1 rounded-lg text-xs font-semibold bg-primary text-white">Todas</button>
+                {% for cat in categorias %}
+                <button type="button" data-cat="{{ cat.id }}" class="pos-cat-btn px-3 py-1 rounded-lg text-xs font-semibold bg-surface-container-low text-on-surface">{{ cat.nombre }}</button>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {% for p in productos %}
+            {% set vencido = (p.estado_vencimiento == 'vencido') %}
+            <button type="button"
+                data-id="{{ p.id }}"
+                data-nombre="{{ p.nombre }}"
+                data-sku="{{ p.sku }}"
+                data-precio="{{ p.precio }}"
+                data-stock="{{ p.stock_gondola }}"
+                data-categoria="{{ p.categoria_id }}"
+                data-vencido="{{ '1' if vencido else '0' }}"
+                class="pos-producto-card text-left bg-white p-3.5 rounded-xl border transition-all shadow-sm hover:shadow-md flex flex-col justify-between
+                {% if vencido %}border-error/60 opacity-60{% else %}border-outline-variant hover:border-primary{% endif %}">
+                <div>
+                    <div class="w-full h-24 rounded-lg bg-surface-container-low mb-2.5 flex items-center justify-center overflow-hidden border border-outline-variant/40">
+                        {% if p.foto_key and url_imagen(p.foto_key) %}
+                        <img src="{{ url_imagen(p.foto_key) }}" alt="{{ p.nombre }}" class="w-full h-full object-contain"/>
+                        {% else %}
+                        <span class="material-symbols-outlined text-3xl text-on-surface-variant">shopping_bag</span>
+                        {% endif %}
+                    </div>
+                    <p class="font-bold text-sm text-on-surface truncate">{{ p.nombre }}</p>
+                    <p class="font-label-sm text-[11px] text-on-surface-variant">{{ p.sku }}</p>
+                </div>
+                <div class="mt-3 pt-2 border-t border-outline-variant/50 flex items-center justify-between">
+                    <span class="font-label-md font-bold text-primary text-base">${{ "%.2f"|format(p.precio) }}</span>
+                    {% if vencido %}
+                    <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-error-container text-error">VENCIDO</span>
+                    {% else %}
+                    <span class="text-[11px] font-label-sm {% if p.stock_gondola <= p.stock_minimo %}text-error font-bold{% else %}text-on-surface-variant{% endif %}">
+                        Gónd: {{ p.stock_gondola }}
+                    </span>
+                    {% endif %}
+                </div>
+            </button>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Ticket 40% (5 cols) -->
+    <div class="lg:col-span-5 bg-white p-5 rounded-xl border border-outline-variant shadow-md sticky top-20">
+        <div class="flex items-center justify-between pb-3 mb-3 border-b border-outline-variant">
+            <h3 class="font-bold text-lg text-on-surface flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary">receipt_long</span>
+                <span>Ticket Actual</span>
+            </h3>
+            <button type="button" id="pos-btn-vaciar" class="text-xs text-error hover:underline font-semibold">Vaciar</button>
+        </div>
+
+        <div id="pos-alerta" class="hidden"></div>
+
+        <div id="pos-ticket-empty" class="py-8 text-center text-on-surface-variant text-sm">
+            Seleccioná o escaneá productos del catálogo para armar el ticket.
+        </div>
+
+        <div id="pos-ticket-items" class="space-y-2 max-h-64 overflow-y-auto table-scroll mb-4"></div>
+
+        <div class="space-y-3 pt-3 border-t border-outline-variant text-sm">
+            <div>
+                <label class="block text-xs font-semibold uppercase text-on-surface-variant mb-1">Cliente (suma 1 punto cada $100)</label>
+                <select id="pos-cliente" class="w-full rounded-xl border-outline-variant text-sm">
+                    <option value="">Consumidor Final</option>
+                    {% for c in clientes %}
+                    <option value="{{ c.id }}" data-direccion="{{ c.direccion or '' }}" data-telefono="{{ c.telefono or '' }}">
+                        {{ c.nombre_completo }} — DNI {{ c.dni }} ({{ c.puntos }} pts)
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold uppercase text-on-surface-variant mb-1">Medio de Pago</label>
+                <select id="pos-metodo-pago" class="w-full rounded-xl border-outline-variant text-sm">
+                    {% for mp in metodos_pago %}
+                    <option value="{{ mp }}">{{ mp }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <label class="flex items-center gap-2 pt-1 cursor-pointer">
+                <input type="checkbox" id="pos-con-envio" class="rounded text-primary focus:ring-primary"/>
+                <span class="font-semibold text-on-surface">Despachar con envío a domicilio</span>
+            </label>
+
+            <div id="pos-panel-envio" class="hidden space-y-2 p-3 rounded-xl bg-surface-container-low border border-outline-variant">
+                <input type="text" id="pos-envio-direccion" placeholder="Dirección de entrega *" class="w-full rounded-lg border-outline-variant text-xs"/>
+                <input type="text" id="pos-envio-telefono" placeholder="Teléfono de contacto" class="w-full rounded-lg border-outline-variant text-xs"/>
+                <input type="text" id="pos-envio-obs" placeholder="Observaciones (piso, timbre, horario)" class="w-full rounded-lg border-outline-variant text-xs"/>
+            </div>
+
+            <div class="pt-3 border-t border-outline-variant space-y-1">
+                <div class="flex justify-between text-xs text-on-surface-variant">
+                    <span>Subtotal</span>
+                    <span id="pos-subtotal" class="font-label-sm">$0.00</span>
+                </div>
+                <div class="flex justify-between text-xs text-secondary font-semibold">
+                    <span>Puntos fidelización</span>
+                    <span id="pos-puntos" class="font-label-sm">+0 pts</span>
+                </div>
+                <div class="flex justify-between text-xl font-bold text-on-surface pt-1">
+                    <span>Total a Cobrar</span>
+                    <span id="pos-total" class="font-label-md text-primary">$0.00</span>
+                </div>
+            </div>
+
+            <button type="button" id="pos-btn-cobrar" data-url="{{ url_for('pos.api_registrar_venta') }}" disabled
+                class="w-full bg-[#006c49] hover:bg-[#10b981] disabled:opacity-40 text-white font-bold py-3.5 rounded-xl transition-all shadow-sm flex items-center justify-center gap-2">
+                <span class="material-symbols-outlined">check_circle</span>
+                <span>Confirmar Cobro y Emitir Ticket</span>
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/pos.js') }}"></script>
+{% endblock %}

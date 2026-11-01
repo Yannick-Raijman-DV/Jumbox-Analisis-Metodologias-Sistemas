@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}JUMBOX - Ticket #{{ venta.id }}{% endblock %}
+{% block content %}
+<div class="max-w-md mx-auto bg-white p-6 rounded-2xl border border-outline-variant shadow-md font-label-sm">
+    <div class="text-center border-b border-dashed border-outline-variant pb-4 mb-4">
+        <h2 class="font-bold text-lg text-primary">SUPERMERCADOS JUMBOX S.A.</h2>
+        <p class="text-xs text-on-surface-variant">Sucursal Centro • Comprobante Ticket #{{ venta.id }}</p>
+        <p class="text-xs text-on-surface-variant">{{ venta.fecha.strftime('%d/%m/%Y %H:%M:%S') }}</p>
+    </div>
+
+    <div class="text-xs space-y-1 mb-4">
+        <p><strong>Cajero:</strong> {{ venta.usuario.nombre if venta.usuario else '-' }}</p>
+        <p><strong>Cliente:</strong> {{ venta.cliente.nombre_completo if venta.cliente else 'Consumidor Final' }}</p>
+        <p><strong>Medio de pago:</strong> {{ venta.metodo_pago }}</p>
+        {% if venta.envio %}
+        <p class="text-secondary font-bold">Envío a domicilio: {{ venta.envio.direccion }} ({{ venta.envio.estado }})</p>
+        {% endif %}
+    </div>
+
+    <table class="w-full text-xs border-t border-b border-dashed border-outline-variant py-2 mb-4">
+        <thead>
+            <tr class="text-left text-on-surface-variant">
+                <th class="py-1">Cant x Producto</th>
+                <th class="py-1 text-right">Subtotal</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in venta.items %}
+            <tr>
+                <td class="py-1">{{ item.cantidad }} x {{ item.producto.nombre }} (${{ "%.2f"|format(item.precio_unitario) }})</td>
+                <td class="py-1 text-right font-bold">${{ "%.2f"|format(item.total) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="flex justify-between text-base font-bold text-on-surface mb-6">
+        <span>TOTAL</span>
+        <span>${{ "%.2f"|format(venta.total) }}</span>
+    </div>
+
+    <div class="flex gap-2 no-print font-body-md">
+        <button type="button" onclick="window.print()" class="flex-1 border border-outline-variant py-2.5 rounded-xl text-sm font-semibold hover:bg-surface-container-low">
+            Imprimir
+        </button>
+        <a href="{{ url_for('pos.venta') }}" class="flex-1 bg-secondary text-white text-center py-2.5 rounded-xl text-sm font-semibold hover:bg-secondary/90">
+            Nueva Venta
+        </a>
+    </div>
+</div>
+{% endblock %}

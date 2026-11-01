@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}JUMBOX - Clientes y Fidelización{% endblock %}
+{% block content %}
+<div class="mb-6 flex justify-between items-center">
+    <div>
+        <h2 class="text-2xl font-bold text-on-surface">Clientes y Programa de Puntos</h2>
+        <p class="text-sm text-on-surface-variant">Fidelización migrada de `clientes` (suma automática de 1 punto cada $100 en el POS).</p>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="bg-white p-6 rounded-xl border border-outline-variant shadow-sm">
+        <h3 class="font-bold text-lg mb-4">Alta de Cliente</h3>
+        <form method="post" class="space-y-3 text-sm">
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs font-semibold uppercase mb-1">Nombre *</label>
+                    <input type="text" name="nombre" required class="w-full rounded-xl border-outline-variant text-sm"/>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold uppercase mb-1">Apellido *</label>
+                    <input type="text" name="apellido" required class="w-full rounded-xl border-outline-variant text-sm"/>
+                </div>
+            </div>
+            <div>
+                <label class="block text-xs font-semibold uppercase mb-1">DNI *</label>
+                <input type="text" name="dni" required class="w-full rounded-xl border-outline-variant text-sm font-label-sm"/>
+            </div>
+            <div>
+                <label class="block text-xs font-semibold uppercase mb-1">Teléfono</label>
+                <input type="text" name="telefono" class="w-full rounded-xl border-outline-variant text-sm"/>
+            </div>
+            <div>
+                <label class="block text-xs font-semibold uppercase mb-1">Dirección (para envíos)</label>
+                <input type="text" name="direccion" class="w-full rounded-xl border-outline-variant text-sm"/>
+            </div>
+            <button type="submit" class="w-full bg-secondary text-white font-bold py-2.5 rounded-xl hover:bg-secondary/90">
+                Registrar Cliente
+            </button>
+        </form>
+    </div>
+
+    <div class="lg:col-span-2 bg-white rounded-xl border border-outline-variant shadow-sm overflow-hidden">
+        <table class="w-full text-left border-collapse text-sm">
+            <thead>
+                <tr class="bg-surface-container-low text-on-surface-variant font-label-md text-xs uppercase border-b border-outline-variant">
+                    <th class="p-4">Cliente</th>
+                    <th class="p-4">DNI</th>
+                    <th class="p-4">Dirección / Teléfono</th>
+                    <th class="p-4 text-right">Compras</th>
+                    <th class="p-4 text-right">Puntos</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for c in clientes %}
+                <tr class="border-b border-outline-variant/60">
+                    <td class="p-4 font-bold">{{ c.nombre_completo }}</td>
+                    <td class="p-4 font-label-md text-xs">{{ c.dni }}</td>
+                    <td class="p-4 text-xs text-on-surface-variant">
+                        {{ c.direccion or 'Sin dirección' }}
+                        {% if c.telefono %} • {{ c.telefono }}{% endif %}
+                    </td>
+                    <td class="p-4 text-right font-label-sm text-xs">${{ "%.2f"|format(c.total_comprado) }} ({{ c.ventas|length }})</td>
+                    <td class="p-4 text-right">
+                        <span class="px-2.5 py-1 rounded-full font-label-md text-xs font-bold bg-secondary-container text-on-secondary-container">
+                            {{ c.puntos }} pts
+                        </span>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}JUMBOX - {% if producto %}Editar{% else %}Nuevo{% endif %} Producto{% endblock %}
+{% block content %}
+<div class="max-w-2xl mx-auto bg-white p-6 rounded-2xl border border-outline-variant shadow-sm">
+    <div class="flex justify-between items-center mb-6">
+        <div>
+            <h2 class="text-xl font-bold text-on-surface">{% if producto %}Editar «{{ producto.nombre }}»{% else %}Nuevo Producto{% endif %}</h2>
+            <p class="text-xs text-on-surface-variant">La imagen se sube a AWS S3 (con URL prefirmada temporal) o a storage local si S3 no está configurado.</p>
+        </div>
+        <a href="{{ url_for('stock.index') }}" class="text-xs text-primary font-semibold hover:underline">← Volver</a>
+    </div>
+
+    <form method="post" enctype="multipart/form-data" class="space-y-4 text-sm">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+                <label class="block text-xs font-semibold uppercase mb-1">Nombre *</label>
+                <input type="text" name="nombre" required value="{{ producto.nombre if producto else '' }}" class="w-full rounded-xl border-outline-variant text-sm"/>
+            </div>
+            <div>
+                <label class="block text-xs font-semibold uppercase mb-1">Código de Barras (EAN-13)</label>
+                <input type="text" name="codigo_barras" value="{{ producto.codigo_barras if producto and producto.codigo_barras else '' }}" class="w-full rounded-xl border-outline-variant text-sm font-label-sm"/>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+                <label class="block text-xs font-semibold uppercase mb-1">Precio Venta ($) *</label>
+                <input type="number" step="0.01" min="0" name="precio" required value="{{ producto.precio if producto else '' }}" class="w-full rounded-xl border-outline-variant text-sm font-label-sm"/>
+            </div>
+            <div>
+                <label class="block text-xs font-semibold uppercase mb-1">Categoría *</label>
+                <select name="categoria_id" class="w-full rounded-xl border-outline-variant text-sm">
+                    {% for c in categorias %}
+                    <option value="{{ c.id }}" {% if producto and producto.categoria_id == c.id %}selected{% endif %}>{{ c.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-semibold uppercase mb-1">Proveedor *</label>
+                <select name="proveedor_id" class="w-full rounded-xl border-outline-variant text-sm">
+                    {% for pr in proveedores %}
+                    <option value="{{ pr.id }}" {% if producto and producto.proveedor_id == pr.id %}selected{% endif %}>{{ pr.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
+            <div>
+                <label class="block text-xs font-semibold uppercase mb-1">Stock Góndola *</label>
+                <input type="number" min="0" name="stock_gondola" required value="{{ producto.stock_gondola if producto else 0 }}" class="w-full rounded-xl border-outline-variant text-sm font-label-sm"/>
+            </div>
+            <div>
+                <label class="block text-xs font-semibold uppercase mb-1">Stock Depósito *</label>
+                <input type="number" min="0" name="stock_deposito" required value="{{ producto.stock_deposito if producto else 0 }}" class="w-full rounded-xl border-outline-variant text-sm font-label-sm"/>
+            </div>
+            <div>
+                <label class="block text-xs font-semibold uppercase mb-1">Stock Mínimo *</label>
+                <input type="number" min="0" name="stock_minimo" required value="{{ producto.stock_minimo if producto else 1 }}" class="w-full rounded-xl border-outline-variant text-sm font-label-sm"/>
+            </div>
+            <div>
+                <label class="block text-xs font-semibold uppercase mb-1">Vencimiento *</label>
+                <input type="date" name="fecha_vencimiento" required value="{{ producto.fecha_vencimiento.isoformat() if producto else '' }}" class="w-full rounded-xl border-outline-variant text-sm font-label-sm"/>
+            </div>
+        </div>
+
+        <div class="p-4 rounded-xl bg-surface-container-low border border-outline-variant space-y-2">
+            <label class="block text-xs font-semibold uppercase">Imagen del Producto (.jpg, .png, .webp — máx 5 MB)</label>
+            {% if producto and producto.foto_key and url_imagen(producto.foto_key) %}
+            <div class="flex items-center gap-3 mb-2">
+                <img src="{{ url_imagen(producto.foto_key) }}" alt="" class="w-16 h-16 rounded-lg object-contain bg-white border p-1"/>
+                <span class="text-xs font-label-sm text-on-surface-variant">Key actual: {{ producto.foto_key }}</span>
+            </div>
+            {% endif %}
+            <input type="file" name="foto" accept=".jpg,.jpeg,.png,.webp,.gif" class="w-full text-xs"/>
+        </div>
+
+        <div class="flex justify-end gap-2 pt-2">
+            <a href="{{ url_for('stock.index') }}" class="px-4 py-2.5 rounded-xl border border-outline-variant text-sm font-semibold">Cancelar</a>
+            <button type="submit" class="bg-secondary text-white px-6 py-2.5 rounded-xl text-sm font-bold hover:bg-secondary/90">
+                Guardar Producto
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}

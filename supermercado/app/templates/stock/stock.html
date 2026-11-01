@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% block title %}JUMBOX - Inventario y Semáforo de Caducidad{% endblock %}
+{% block content %}
+<div class="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <div>
+        <h2 class="text-2xl font-bold text-on-surface">Inventario y Semáforo de Caducidad</h2>
+        <p class="text-sm text-on-surface-variant">Control de góndola vs. Depósito Central, traslado rápido e imágenes alojadas en AWS S3.</p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+        <a href="{{ url_for('stock.movimientos') }}" class="border border-outline-variant bg-white px-4 py-2 rounded-xl text-xs font-semibold hover:bg-surface-container-low flex items-center gap-1.5">
+            <span class="material-symbols-outlined text-[18px]">history</span>
+            <span>Auditoría de Movimientos</span>
+        </a>
+        <a href="{{ url_for('stock.mermas') }}" class="border border-error/40 bg-error-container/50 text-on-error-container px-4 py-2 rounded-xl text-xs font-semibold hover:bg-error-container flex items-center gap-1.5">
+            <span class="material-symbols-outlined text-[18px]">delete_sweep</span>
+            <span>Registrar Merma</span>
+        </a>
+        <a href="{{ url_for('stock.nuevo_producto') }}" class="bg-secondary text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-secondary/90 flex items-center gap-1.5 shadow-sm">
+            <span class="material-symbols-outlined text-[18px]">add</span>
+            <span>Nuevo Producto</span>
+        </a>
+    </div>
+</div>
+
+<!-- Filtros de semáforo -->
+<div class="flex flex-wrap items-center justify-between gap-3 mb-5">
+    <div class="flex flex-wrap gap-2">
+        <a href="{{ url_for('stock.index', filtro='todos') }}" class="px-3.5 py-1.5 rounded-xl text-xs font-bold {% if filtro == 'todos' %}bg-primary text-white{% else %}bg-white border border-outline-variant{% endif %}">
+            Todos ({{ contadores.todos }})
+        </a>
+        <a href="{{ url_for('stock.index', filtro='vencidos') }}" class="px-3.5 py-1.5 rounded-xl text-xs font-bold {% if filtro == 'vencidos' %}bg-[#ba1a1a] text-white{% else %}bg-white border border-error/40 text-error{% endif %}">
+            Vencidos ({{ contadores.vencidos }})
+        </a>
+        <a href="{{ url_for('stock.index', filtro='por_vencer') }}" class="px-3.5 py-1.5 rounded-xl text-xs font-bold {% if filtro == 'por_vencer' %}bg-[#f59e0b] text-white{% else %}bg-white border border-[#f59e0b] text-[#6c4300]{% endif %}">
+            Por Vencer ≤7d ({{ contadores.por_vencer }})
+        </a>
+        <a href="{{ url_for('stock.index', filtro='bajo_stock') }}" class="px-3.5 py-1.5 rounded-xl text-xs font-bold {% if filtro == 'bajo_stock' %}bg-primary-container text-white{% else %}bg-white border border-outline-variant{% endif %}">
+            Bajo Mínimo ({{ contadores.bajo_stock }})
+        </a>
+    </div>
+
+    <form method="post" action="{{ url_for('stock.nueva_categoria') }}" class="flex gap-2">
+        <input type="text" name="nombre_categoria" required placeholder="Nueva categoría..." class="rounded-xl border-outline-variant text-xs py-1.5"/>
+        <button type="submit" class="bg-surface-container-high text-primary px-3 py-1.5 rounded-xl text-xs font-bold hover:bg-primary hover:text-white">+ Categoría</button>
+    </form>
+</div>
+
+<!-- Tabla de productos -->
+<div class="bg-white rounded-xl border border-outline-variant shadow-sm overflow-hidden">
+    <div class="overflow-x-auto table-scroll">
+        <table class="w-full text-left border-collapse text-sm">
+            <thead>
+                <tr class="bg-surface-container-low text-on-surface-variant font-label-md text-xs uppercase border-b border-outline-variant">
+                    <th class="p-4">Producto</th>
+                    <th class="p-4">SKU / Categoría</th>
+                    <th class="p-4">Proveedor</th>
+                    <th class="p-4">Precio</th>
+                    <th class="p-4">Semáforo Caducidad</th>
+                    <th class="p-4 text-center">Góndola (Mín)</th>
+                    <th class="p-4 text-center">Depósito</th>
+                    <th class="p-4 text-right">Trasladar a Góndola</th>
+                    <th class="p-4 text-right">Editar</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in productos %}
+                <tr class="border-b border-outline-variant/60 hover:bg-surface-container-low/30">
+                    <td class="p-4 flex items-center gap-3">
+                        <div class="w-11 h-11 rounded-lg bg-surface-container-low border border-outline-variant flex items-center justify-center overflow-hidden shrink-0">
+                            {% if p.foto_key and url_imagen(p.foto_key) %}
+                            <img src="{{ url_imagen(p.foto_key) }}" alt="{{ p.nombre }}" class="w-full h-full object-contain"/>
+                            {% else %}
+                            <span class="material-symbols-outlined text-on-surface-variant">image</span>
+                            {% endif %}
+                        </div>
+                        <div>
+                            <p class="font-bold text-on-surface">{{ p.nombre }}</p>
+                            {% if p.foto_key %}
+                            <p class="text-[10px] font-label-sm text-secondary">Key: {{ p.foto_key }}</p>
+                            {% endif %}
+                        </div>
+                    </td>
+                    <td class="p-4">
+                        <p class="font-label-md text-xs font-bold">{{ p.sku }}</p>
+                        <p class="text-xs text-on-surface-variant">{{ p.categoria.nombre if p.categoria else '-' }}</p>
+                    </td>
+                    <td class="p-4 text-xs">{{ p.proveedor.nombre if p.proveedor else '-' }}</td>
+                    <td class="p-4 font-label-md font-bold text-primary">${{ "%.2f"|format(p.precio) }}</td>
+                    <td class="p-4">
+                        {% if p.estado_vencimiento == 'vencido' %}
+                        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-[#ba1a1a]/15 text-[#ba1a1a]">
+                            <span class="w-2 h-2 rounded-full bg-[#ba1a1a]"></span>
+                            Vencido ({{ p.fecha_vencimiento }})
+                        </span>
+                        {% elif p.estado_vencimiento == 'por_vencer' %}
+                        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-[#f59e0b]/20 text-[#6c4300]">
+                            <span class="w-2 h-2 rounded-full bg-[#f59e0b]"></span>
+                            Vence en {{ p.dias_para_vencer }}d ({{ p.fecha_vencimiento }})
+                        </span>
+                        {% else %}
+                        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-[#006c49]">
+                            <span class="w-2 h-2 rounded-full bg-[#10b981]"></span>
+                            Vigente ({{ p.fecha_vencimiento }})
+                        </span>
+                        {% endif %}
+                    </td>
+                    <td class="p-4 text-center font-label-md">
+                        <span class="font-bold {% if p.bajo_minimo %}text-error{% endif %}">{{ p.stock_gondola }}</span>
+                        <span class="text-xs text-on-surface-variant">(mín {{ p.stock_minimo }})</span>
+                    </td>
+                    <td class="p-4 text-center font-label-md font-bold text-primary">{{ p.stock_deposito }}</td>
+                    <td class="p-4 text-right">
+                        {% if p.stock_deposito > 0 %}
+                        <form method="post" action="{{ url_for('stock.traslado') }}" class="inline-flex items-center gap-1">
+                            <input type="hidden" name="producto_id" value="{{ p.id }}"/>
+                            <input type="number" name="cantidad" min="1" max="{{ p.stock_deposito }}" value="1" class="w-16 rounded-lg border-outline-variant text-xs py-1 text-center font-label-sm"/>
+                            <button type="submit" class="bg-primary text-white px-2.5 py-1 rounded-lg text-xs font-semibold hover:bg-primary-container" title="Pasar de Depósito Central a Góndola">
+                                → Góndola
+                            </button>
+                        </form>
+                        {% else %}
+                        <span class="text-xs text-on-surface-variant">Sin stock dep.</span>
+                        {% endif %}
+                    </td>
+                    <td class="p-4 text-right">
+                        <a href="{{ url_for('stock.editar_producto', producto_id=p.id) }}" class="text-primary hover:underline text-xs font-semibold">Editar</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

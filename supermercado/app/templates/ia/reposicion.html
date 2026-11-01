@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% block title %}JUMBOX - Sugerencias de Reposición con IA{% endblock %}
+{% block content %}
+<div class="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <div>
+        <h2 class="text-2xl font-bold text-on-surface flex items-center gap-2">
+            <span class="material-symbols-outlined text-primary text-3xl">psychology</span>
+            <span>Asistente de Reposición con IA Local</span>
+        </h2>
+        <p class="text-sm text-on-surface-variant">
+            Cálculo determinístico de rotación, stock mínimo y caducidad + redacción priorizada con `{{ recomendacion.modelo }}` (singleton).
+        </p>
+    </div>
+    <span class="px-3.5 py-1.5 rounded-full text-xs font-label-sm font-bold
+        {% if recomendacion.fuente == 'llm' %}bg-secondary-container text-on-secondary-container{% else %}bg-surface-container-high text-primary{% endif %}">
+        Fuente: {% if recomendacion.fuente == 'llm' %}LLM Local ({{ recomendacion.segundos }}s){% else %}Motor de Reglas (LLM_ENABLED=false){% endif %}
+    </span>
+</div>
+
+<!-- Dictamen redactado por la LLM / Reglas -->
+<div class="bg-primary-container text-white p-6 rounded-2xl shadow-md mb-6">
+    <div class="flex items-center justify-between mb-3">
+        <h3 class="font-bold text-base flex items-center gap-2">
+            <span class="material-symbols-outlined text-secondary-fixed">auto_awesome</span>
+            <span>Informe Ejecutivo de Compras y Vencimientos</span>
+        </h3>
+        <span class="text-xs font-label-sm text-secondary-fixed-dim">{{ recomendacion.modelo }}</span>
+    </div>
+    <pre class="whitespace-pre-wrap font-body-md text-sm leading-relaxed bg-white/10 p-4 rounded-xl border border-white/15">{{ recomendacion.texto }}</pre>
+    {% if recomendacion.error %}
+    <p class="text-xs text-amber-200 mt-2 font-label-sm">Nota: se usó el motor de reglas porque la LLM devolvió: {{ recomendacion.error }}</p>
+    {% endif %}
+</div>
+
+<!-- Órdenes sugeridas por proveedor en 1 clic -->
+{% if pedidos_por_proveedor %}
+<div class="mb-6">
+    <h3 class="font-bold text-lg mb-3">Generar Órdenes de Compra Sugeridas (1 clic)</h3>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {% for grupo in pedidos_por_proveedor %}
+        <div class="bg-white p-5 rounded-xl border border-outline-variant shadow-sm flex flex-col justify-between">
+            <div>
+                <div class="flex justify-between items-center mb-2">
+                    <h4 class="font-bold text-primary">{{ grupo.proveedor }}</h4>
+                    <span class="font-label-md font-bold text-sm">Costo est.: ${{ "%.2f"|format(grupo.total) }}</span>
+                </div>
+                <ul class="text-xs space-y-1 mb-4 text-on-surface-variant">
+                    {% for it in grupo.items %}
+                    <li>• <strong>{{ it.cantidad_sugerida }} u.</strong> de {{ it.nombre }} (${{ "%.2f"|format(it.precio_compra) }} c/u)</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            <form method="post" action="{{ url_for('ia.generar_pedido_sugerido') }}">
+                <input type="hidden" name="proveedor_id" value="{{ grupo.proveedor_id }}"/>
+                <button type="submit" class="w-full bg-secondary text-white py-2.5 rounded-xl text-xs font-bold hover:bg-secondary/90">
+                    Emitir Pedido Automático a {{ grupo.proveedor }}
+                </button>
+            </form>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Tabla detallada de candidatos -->
+<div class="bg-white rounded-xl border border-outline-variant shadow-sm overflow-hidden">
+    <div class="p-4 border-b border-outline-variant">
+        <h3 class="font-bold">Detalle Técnico Analizado ({{ candidatos|length }} ítems)</h3>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse text-sm">
+            <thead>
+                <tr class="bg-surface-container-low text-on-surface-variant font-label-md text-xs uppercase border-b border-outline-variant">
+                    <th class="p-3.5">Prioridad</th>
+                    <th class="p-3.5">Producto</th>
+                    <th class="p-3.5">Proveedor</th>
+                    <th class="p-3.5">Gónd. / Dep. (Mín)</th>
+                    <th class="p-3.5">Acción Sugerida</th>
+                    <th class="p-3.5">Justificación</th>
+                    <th class="p-3.5 text-right">Ejecutar</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for c in candidatos %}
+                <tr class="border-b border-outline-variant/60">
+                    <td class="p-3.5">
+                        <span class="px-2.5 py-0.5 rounded-full text-xs font-bold uppercase
+                            {% if c.prioridad == 'alta' %}bg-[#ba1a1a]/15 text-[#ba1a1a]
+                            {% elif c.prioridad == 'media' %}bg-[#f59e0b]/20 text-[#6c4300]
+                            {% else %}bg-primary-fixed text-primary{% endif %}">
+                            {{ c.prioridad }}
+                        </span>
+                    </td>
+                    <td class="p-3.5 font-bold">{{ c.nombre }}</td>
+                    <td class="p-3.5 text-xs">{{ c.proveedor }}</td>
+                    <td class="p-3.5 font-label-md text-xs">{{ c.stock_gondola }} / {{ c.stock_deposito }} (mín {{ c.stock_minimo }})</td>
+                    <td class="p-3.5 font-bold text-primary">
+                        {{ c.accion }}{% if c.cantidad_sugerida %} ({{ c.cantidad_sugerida }} u.){% endif %}
+                    </td>
+                    <td class="p-3.5 text-xs text-on-surface-variant">{{ c.motivo }}</td>
+                    <td class="p-3.5 text-right">
+                        {% if c.accion == 'Trasladar' %}
+                        <form method="post" action="{{ url_for('ia.trasladar_sugerido') }}">
+                            <input type="hidden" name="producto_id" value="{{ c.producto_id }}"/>
+                            <input type="hidden" name="cantidad" value="{{ c.cantidad_sugerida }}"/>
+                            <button type="submit" class="bg-primary text-white px-3 py-1 rounded-lg text-xs font-semibold">Trasladar</button>
+                        </form>
+                        {% elif c.accion == 'Dar de baja' %}
+                        <a href="{{ url_for('stock.mermas') }}" class="text-error font-bold text-xs hover:underline">Ir a Mermas →</a>
+                        {% else %}
+                        <span class="text-xs text-on-surface-variant">—</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="7" class="p-6 text-center text-on-surface-variant">Todo el inventario está cubierto y sin vencimientos próximos.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

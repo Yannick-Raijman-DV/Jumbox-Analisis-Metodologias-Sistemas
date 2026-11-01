@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block title %}JUMBOX - {{ proveedor.nombre }}{% endblock %}
+{% block content %}
+<div class="mb-6 flex justify-between items-center">
+    <div>
+        <h2 class="text-2xl font-bold text-on-surface">{{ proveedor.nombre }}</h2>
+        <p class="text-sm font-label-sm text-on-surface-variant">CUIT {{ proveedor.cuit }} • Deuda actual: <strong class="{% if proveedor.deuda > 0 %}text-error{% else %}text-secondary{% endif %}">${{ "%.2f"|format(proveedor.deuda) }}</strong></p>
+    </div>
+    <a href="{{ url_for('proveedores.index') }}" class="text-xs font-semibold text-primary hover:underline">← Volver a Proveedores</a>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <!-- Emitir pedido de compra -->
+    <div class="bg-white p-6 rounded-xl border border-outline-variant shadow-sm">
+        <h3 class="font-bold text-lg mb-1">Registrar Pedido a Depósito Central</h3>
+        <p class="text-xs text-on-surface-variant mb-4">Suma unidades al depósito (`productos_depositos`), registra `INGRESO_COMPRA` y actualiza la deuda.</p>
+
+        <form method="post" action="{{ url_for('proveedores.crear_pedido', proveedor_id=proveedor.id) }}" class="space-y-3 text-sm">
+            <table class="w-full text-left border-collapse text-xs">
+                <thead>
+                    <tr class="border-b border-outline-variant text-on-surface-variant uppercase font-label-sm">
+                        <th class="py-2">Producto</th>
+                        <th class="py-2 text-center">Stock Total</th>
+                        <th class="py-2 text-center">Cantidad</th>
+                        <th class="py-2 text-right">Costo Unit. ($)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for prod in proveedor.productos %}
+                    <tr class="border-b border-outline-variant/50">
+                        <td class="py-2.5 font-semibold">{{ prod.nombre }}</td>
+                        <td class="py-2.5 text-center font-label-sm">{{ prod.stock_total }}</td>
+                        <td class="py-2.5 text-center">
+                            <input type="number" min="0" name="cantidad_{{ prod.id }}" value="0" class="w-20 rounded-lg border-outline-variant text-xs text-center font-label-sm"/>
+                        </td>
+                        <td class="py-2.5 text-right">
+                            <input type="number" step="0.01" min="0" name="precio_{{ prod.id }}" value="{{ precios_sugeridos[prod.id] }}" class="w-24 rounded-lg border-outline-variant text-xs text-right font-label-sm"/>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <button type="submit" class="w-full bg-primary text-white font-bold py-2.5 rounded-xl hover:bg-primary-container">
+                Ingresar Pedido al Depósito
+            </button>
+        </form>
+    </div>
+
+    <!-- Registrar pago de deuda con comprobante S3 -->
+    <div class="space-y-6">
+        <div class="bg-white p-6 rounded-xl border border-outline-variant shadow-sm">
+            <h3 class="font-bold text-lg mb-1">Registrar Pago de Deuda (con Comprobante S3)</h3>
+            <p class="text-xs text-on-surface-variant mb-4">Subí el comprobante de transferencia (PDF o imagen) al bucket privado de AWS S3.</p>
+
+            <form method="post" enctype="multipart/form-data" action="{{ url_for('proveedores.registrar_pago', proveedor_id=proveedor.id) }}" class="space-y-3 text-sm">
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold uppercase mb-1">Monto a Pagar ($) *</label>
+                        <input type="number" step="0.01" min="0.01" max="{{ proveedor.deuda }}" name="monto" required value="{{ proveedor.deuda if proveedor.deuda > 0 else '' }}" class="w-full rounded-xl border-outline-variant text-sm font-label-sm"/>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold uppercase mb-1">Observaciones</label>
+                        <input type="text" name="observaciones" placeholder="Transf. #..." class="w-full rounded-xl border-outline-variant text-sm"/>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold uppercase mb-1">Comprobante (PDF / Imagen)</label>
+                    <input type="file" name="comprobante" accept=".pdf,.jpg,.jpeg,.png,.webp" class="w-full text-xs"/>
+                </div>
+                <button type="submit" {% if proveedor.deuda <= 0 %}disabled{% endif %} class="w-full bg-secondary disabled:opacity-40 text-white font-bold py-2.5 rounded-xl hover:bg-secondary/90">
+                    Registrar Pago y Descontar Deuda
+                </button>
+            </form>
+        </div>
+
+        <div class="bg-white p-5 rounded-xl border border-outline-variant shadow-sm">
+            <h4 class="font-bold text-sm mb-3">Pagos Realizados</h4>
+            <div class="space-y-2 text-xs">
+                {% for pg in proveedor.pagos %}
+                <div class="flex items-center justify-between p-2.5 rounded-lg bg-surface-container-low">
+                    <div>
+                        <p class="font-bold text-secondary">-${{ "%.2f"|format(pg.monto) }} ({{ pg.fecha.strftime('%d/%m/%Y %H:%M') }})</p>
+                        <p class="text-on-surface-variant">{{ pg.observaciones or 'Pago registrado' }}</p>
+                    </div>
+                    {% if pg.comprobante_key and url_imagen(pg.comprobante_key) %}
+                    <a href="{{ url_imagen(pg.comprobante_key) }}" target="_blank" class="px-2.5 py-1 rounded bg-primary text-white font-semibold">
+                        Ver Comprobante S3
+                    </a>
+                    {% endif %}
+                </div>
+                {% else %}
+                <p class="text-on-surface-variant">Sin pagos registrados aún.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -87,9 +87,12 @@ def test_login_usuarios_migrados_y_permisos_por_rol(client):
     assert resp.status_code == 200
     assert "Dashboard Principal" in resp.get_data(as_text=True)
 
-    # Operario puede entrar a Stock e IA, pero NO a POS (403)
+    # Operario puede entrar a Stock, IA y al endpoint asíncrono /ia/api/recomendacion, pero NO a POS (403)
     assert client.get("/stock/").status_code == 200
     assert client.get("/ia/reposicion").status_code == 200
+    r_api_ia = client.get("/ia/api/recomendacion")
+    assert r_api_ia.status_code == 200
+    assert "texto" in r_api_ia.get_json()
     assert client.get("/pos/").status_code == 403
     client.get("/logout")
 
@@ -105,6 +108,15 @@ def test_login_usuarios_migrados_y_permisos_por_rol(client):
     assert client.get("/pos/").status_code == 200
     assert client.get("/stock/").status_code == 200
     assert client.get("/usuarios").status_code == 200
+
+    # Administrador puede cambiar el rol de otro usuario (ej. cajero #10 -> Operario rol_id=2)
+    r_cambio = client.post("/usuarios/10/rol", data={"rol_id": 2}, follow_redirects=True)
+    assert r_cambio.status_code == 200
+    assert db.session.get(Usuario, 10).rol_nombre == "Operario"
+
+    # Administrador NO puede quitarse el rol Admin a sí mismo
+    client.post("/usuarios/1/rol", data={"rol_id": 3}, follow_redirects=True)
+    assert db.session.get(Usuario, 1).rol_nombre == "Admin"
 
 
 def test_google_usuario_nuevo_elige_rol_operario_o_cajero(client, app):
@@ -247,7 +259,7 @@ def test_llm_singleton_y_fallback(app):
 
         res_llm = llm.generar_recomendacion(candidatos)
         assert res_llm["fuente"] == "llm"
-        assert "Resumen:" in res_llm["texto"]
+        assert "Resumen IA" in res_llm["texto"]
 
     llm.AsistenteReposicion.reiniciar()
     app.config["LLM_ENABLED"] = False

@@ -119,10 +119,6 @@ def create_app(config_class=Config) -> Flask:
         info = cargar_seed(reset=reset)
         click.echo(f"Seed ejecutado: {info}")
 
-    # CLI comando: flask --app run s3-check (diagnóstico del bucket de AWS S3)
-    from .cli import registrar_comandos
-    registrar_comandos(app)
-
     # Crear tablas y sembrar si está vacía
     with app.app_context():
         db.create_all()

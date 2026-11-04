@@ -343,33 +343,3 @@ class HistorialMovimiento(db.Model):
 
     producto = db.relationship("Producto")
     usuario = db.relationship("Usuario")
-
-
-class PagoMP(db.Model):
-    """Tabla nueva: cobros de Mercado Pago asociados a una venta del POS.
-
-    Cada vez que se toca "Pagar con Mercado Pago" se crea una order en MP y se guarda
-    acá su id. El estado se actualiza SIEMPRE consultando la API (nunca con lo que
-    viene en la URL de regreso). Es tabla nueva: db.create_all() la crea sin migrar.
-    """
-    __tablename__ = "pagos_mercadopago"
-
-    id = db.Column(db.Integer, primary_key=True)
-    venta_id = db.Column(db.Integer, db.ForeignKey("ventas.id_venta"), nullable=False, index=True)
-    order_id = db.Column(db.String(64), unique=True, nullable=False)  # id de la order en MP (ORD...)
-    estado = db.Column(db.String(30), nullable=False, default="created")  # status de la order
-    detalle = db.Column(db.String(60))  # status_detail (ej. accredited, rejected_by_issuer)
-    checkout_url = db.Column(db.String(500))
-    fecha = db.Column(db.DateTime, nullable=False, default=ahora)
-    fecha_actualizacion = db.Column(db.DateTime)
-
-    venta = db.relationship("Venta")
-
-    @property
-    def pagado(self) -> bool:
-        return self.estado == "processed"
-
-    @property
-    def pendiente(self) -> bool:
-        """True si la order todavía puede terminar pagada (created, processing, action_required...)."""
-        return self.estado not in ("processed", "failed", "canceled", "expired", "refunded")

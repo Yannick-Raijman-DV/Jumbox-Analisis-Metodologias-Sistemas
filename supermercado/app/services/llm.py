@@ -15,43 +15,27 @@ Decisión de diseño: las cantidades las calcula Python
 hechos ya calculados en oraciones simples (con un ejemplo one-shot) y redacta
 un dictamen ejecutivo breve en español, evitando que un modelo de 0.5B alucine
 números o copie fragmentos de una tabla.
-
-Contexto del negocio (no hay fine-tuning: todo entra por el prompt en cada consulta):
-    - Prompt de sistema: reglas fijas de JUMBOX (flujo de stock, vencidos,
-      umbral de promoción tomado de DIAS_ALERTA_VENCIMIENTO, deuda con proveedores).
-    - Viñeta de cada pedido: monto estimado y deuda actual con ese proveedor,
-      también calculados en Python. Van dentro de la misma viñeta y no en una
-      sección aparte porque, probado con Qwen 0.5B, la sección separada lo hacía
-      mezclar productos entre líneas.
 """
 import threading
 import time
 
 from flask import current_app
 
-
-def sistema_prompt(dias_alerta: int) -> str:
-    return (
-        "Sos el encargado de compras e inventario del supermercado JUMBOX. "
-        "Reglas del negocio: la mercadería entra del proveedor al Depósito Central y de ahí se traslada a la góndola; "
-        "un producto vencido no se puede vender, se retira y se registra como merma; "
-        f"si vence en {dias_alerta} días o menos no se repone, se promociona en caja; "
-        "cada pedido a un proveedor se suma a la deuda que tenemos con él. "
-        "A partir de las alertas del día, redactá un párrafo breve en español rioplatense (2 a 3 oraciones) "
-        "indicando qué acción urgente hacer primero y qué pedidos emitir a cada proveedor. "
-        "Usá exactamente los productos, cantidades y montos informados."
-    )
-
+SISTEMA_PROMPT = (
+    "Sos el encargado de compras e inventario del supermercado JUMBOX. "
+    "A partir de las alertas del día, redactá un párrafo breve en español rioplatense (2 a 3 oraciones) "
+    "indicando qué acción urgente hacer primero y qué pedidos emitir a cada proveedor. "
+    "Usá exactamente los productos y cantidades informados."
+)
 
 EJEMPLO_USER = (
     "Alertas del día:\n"
-    "• URGENTE — Leche 1L está vencido: retirar 6 u. y registrar merma.\n"
-    "• PEDIDO A LA SERENÍSIMA — Solicitar 10 u. de Yogur (unos $4,500.00; deuda actual con el proveedor: $12,000.00)."
+    "• Leche 1L está vencido: retirarlo de la góndola y registrar la merma.\n"
+    "• Pedido a La Serenísima: 10 u. de Yogur."
 )
 EJEMPLO_ASSISTANT = (
-    "Primero hay que retirar de la góndola las 6 unidades de Leche 1L vencida y cargarlas como merma para que no pasen por caja. "
-    "Después, conviene emitir hoy el pedido a La Serenísima por 10 unidades de Yogur (unos $4,500.00), "
-    "teniendo en cuenta que la deuda con ese proveedor ya es de $12,000.00."
+    "Primero hay que retirar de la góndola la Leche 1L vencida y cargarla como merma para evitar que pase por caja. "
+    "En segundo lugar, conviene emitir hoy mismo el pedido a La Serenísima por 10 unidades de Yogur para recomponer el stock."
 )
 
 FRASES_ECO_PROHIBIDAS = (
@@ -96,12 +80,12 @@ class AsistenteReposicion:
         with cls._lock:
             cls._instancia = None
 
-    def redactar(self, alertas: str, dias_alerta: int, max_tokens: int) -> str:
+    def redactar(self, puntos_operativos: str, max_tokens: int) -> str:
         mensajes = [
-            {"role": "system", "content": sistema_prompt(dias_alerta)},
+            {"role": "system", "content": SISTEMA_PROMPT},
             {"role": "user", "content": EJEMPLO_USER},
             {"role": "assistant", "content": EJEMPLO_ASSISTANT},
-            {"role": "user", "content": f"Alertas del día:\n{alertas}"},
+            {"role": "user", "content": f"Alertas del día:\n{puntos_operativos}"},
         ]
         salida = self.generar(
             mensajes,
@@ -133,8 +117,6 @@ def puntos_operativos(candidatos: list[dict]) -> list[str]:
 
     lineas = []
     reponer: dict[str, list[str]] = {}
-    montos: dict[str, float] = {}
-    deudas: dict[str, float] = {}
     for c in candidatos:
         if c["accion"] == "Dar de baja":
             lineas.append(f"• URGENTE — {c['nombre']} está vencido: retirar {c['cantidad_sugerida']} u. y registrar merma.")
@@ -142,16 +124,11 @@ def puntos_operativos(candidatos: list[dict]) -> list[str]:
             lineas.append(f"• ATENCIÓN — {c['nombre']} vence en {c['dias_para_vencer']} días: promocionar en caja, no reponer.")
         elif c["accion"] == "Reponer":
             reponer.setdefault(c["proveedor"], []).append(f"{c['cantidad_sugerida']} u. de {c['nombre']}")
-            montos[c["proveedor"]] = montos.get(c["proveedor"], 0.0) + c["cantidad_sugerida"] * c["precio_compra"]
-            deudas[c["proveedor"]] = c["deuda_proveedor"]
         elif c["accion"] == "Trasladar":
             lineas.append(f"• TRASLADO — Pasar {c['cantidad_sugerida']} u. de {c['nombre']} del Depósito Central a Góndola.")
 
     for proveedor, productos in reponer.items():
-        lineas.append(
-            f"• PEDIDO A {proveedor.upper()} — Solicitar " + ", ".join(productos)
-            + f" (unos ${montos[proveedor]:,.2f}; deuda actual con el proveedor: ${deudas[proveedor]:,.2f})."
-        )
+        lineas.append(f"• PEDIDO A {proveedor.upper()} — Solicitar " + ", ".join(productos) + ".")
     return lineas
 
 
@@ -189,7 +166,7 @@ def generar_recomendacion(candidatos: list[dict]) -> dict:
     try:
         inicio = time.time()
         asistente = AsistenteReposicion.obtener(cfg["LLM_MODEL"])
-        dictamen = asistente.redactar(vinetas_str, cfg["DIAS_ALERTA_VENCIMIENTO"], cfg["LLM_MAX_TOKENS"])
+        dictamen = asistente.redactar(vinetas_str, cfg["LLM_MAX_TOKENS"])
         if not dictamen:
             dictamen = f"La prioridad inmediata es atender «{candidatos[0]['nombre']}» ({candidatos[0]['accion'].lower()})."
         resultado["texto"] = f"{vinetas_str}\n\nResumen IA ({cfg['LLM_MODEL']}):\n{dictamen}"

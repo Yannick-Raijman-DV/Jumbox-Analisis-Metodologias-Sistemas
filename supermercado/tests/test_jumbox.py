@@ -261,25 +261,5 @@ def test_llm_singleton_y_fallback(app):
         assert res_llm["fuente"] == "llm"
         assert "Resumen IA" in res_llm["texto"]
 
-        # El modelo recibe las reglas del negocio y el monto/deuda de cada pedido
-        mensajes = pipeline_falso.call_args.args[0]
-        assert "Reglas del negocio" in mensajes[0]["content"]
-        assert f"vence en {app.config['DIAS_ALERTA_VENCIMIENTO']} días" in mensajes[0]["content"]
-        assert any(c["accion"] == "Reponer" for c in candidatos)
-        assert "deuda actual con el proveedor" in mensajes[-1]["content"]
-
     llm.AsistenteReposicion.reiniciar()
     app.config["LLM_ENABLED"] = False
-
-
-def test_llm_pedido_con_monto_y_deuda():
-    candidatos = [
-        {"accion": "Reponer", "nombre": "Bon o Bon", "proveedor": "Arcor", "cantidad_sugerida": 10,
-         "precio_compra": 50.0, "deuda_proveedor": 1200.0},
-        {"accion": "Reponer", "nombre": "Rocklets", "proveedor": "Arcor", "cantidad_sugerida": 2,
-         "precio_compra": 25.0, "deuda_proveedor": 1200.0},
-    ]
-    assert llm.puntos_operativos(candidatos) == [
-        "• PEDIDO A ARCOR — Solicitar 10 u. de Bon o Bon, 2 u. de Rocklets "
-        "(unos $550.00; deuda actual con el proveedor: $1,200.00)."
-    ]

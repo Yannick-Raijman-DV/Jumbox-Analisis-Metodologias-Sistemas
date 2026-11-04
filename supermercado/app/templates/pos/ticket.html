@@ -12,9 +12,6 @@
         <p><strong>Cajero:</strong> {{ venta.usuario.nombre if venta.usuario else '-' }}</p>
         <p><strong>Cliente:</strong> {{ venta.cliente.nombre_completo if venta.cliente else 'Consumidor Final' }}</p>
         <p><strong>Medio de pago:</strong> {{ venta.metodo_pago }}</p>
-        {% if venta.metodo_pago == 'Mercado Pago' %}
-        <p><strong>Estado MP:</strong> <span style="color: {{ mp_estado[1] }}" class="font-bold">{{ mp_estado[0] }}</span></p>
-        {% endif %}
         {% if venta.envio %}
         <p class="text-secondary font-bold">Envío a domicilio: {{ venta.envio.direccion }} ({{ venta.envio.estado }})</p>
         {% endif %}
@@ -42,64 +39,6 @@
         <span>${{ "%.2f"|format(venta.total) }}</span>
     </div>
 
-    {# Cobro con Mercado Pago (no se imprime). El token nunca llega acá: solo estados y links propios. #}
-    {% if venta.metodo_pago == 'Mercado Pago' %}
-    {% set mp_pagado = pago_mp and pago_mp.pagado %}
-    <div class="no-print font-body-md mb-4 p-4 rounded-xl border border-outline-variant bg-surface-container-low space-y-3">
-        <div class="flex items-center justify-between gap-2">
-            <span class="flex items-center gap-1.5 font-bold text-sm text-primary">
-                <span class="material-symbols-outlined text-[20px]">account_balance_wallet</span>
-                Cobro con Mercado Pago
-            </span>
-            <span class="px-2.5 py-0.5 rounded-full text-xs font-bold text-white" style="background-color: {{ mp_estado[1] }}">{{ mp_estado[0] }}</span>
-        </div>
-
-        {% if pago_mp %}
-        <p class="font-label-sm text-[11px] text-on-surface-variant break-all">
-            Orden {{ pago_mp.order_id }}{% if mp_detalle %} · {{ mp_detalle }}{% endif %}
-        </p>
-        {% endif %}
-
-        {% if not mp_configurado %}
-        <p class="text-xs px-3 py-2 rounded-lg bg-tertiary-fixed text-on-tertiary-fixed">
-            Mercado Pago no está configurado (falta <span class="font-label-sm">MP_ACCESS_TOKEN</span> en el .env).
-            Cargá el Access Token de PRUEBA (empieza con <span class="font-label-sm">APP_USR-</span>) y reiniciá el servidor.
-        </p>
-        {% else %}
-            {% if not mp_token_prueba %}
-            <p class="text-xs px-3 py-2 rounded-lg bg-tertiary-fixed text-on-tertiary-fixed">
-                El MP_ACCESS_TOKEN no parece de Mercado Pago: tiene que empezar con <span class="font-label-sm">APP_USR-</span>.
-            </p>
-            {% endif %}
-            <div class="flex gap-2">
-                {% if not mp_pagado %}
-                <form method="post" action="{{ url_for('pos.mp_cobrar', venta_id=venta.id) }}" class="flex-1"
-                      onsubmit="this.querySelector('button').disabled = true;">
-                    <button type="submit" class="w-full bg-secondary text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-secondary/90 disabled:opacity-50">
-                        Pagar con Mercado Pago
-                    </button>
-                </form>
-                {% endif %}
-                {% if pago_mp %}
-                <form method="post" action="{{ url_for('pos.mp_verificar', venta_id=venta.id) }}" class="flex-1">
-                    <button type="submit" class="w-full border border-outline-variant bg-white py-2.5 rounded-xl text-sm font-semibold hover:bg-surface-container-high">
-                        Verificar pago
-                    </button>
-                </form>
-                {% endif %}
-            </div>
-            {% if not mp_pagado %}
-            <p class="text-[11px] leading-relaxed text-on-surface-variant">
-                Para la demo abrí Jumbox en una ventana de incógnito (sin sesión de Mercado Pago) antes de cobrar.
-                Tarjeta de prueba <span class="font-label-sm whitespace-nowrap">5031 7557 3453 0604</span> · CVV 123 · 11/30 ·
-                titular APRO (aprobado) u OTHE (rechazado) · DNI 12345678 · email: cualquiera válido.
-                Después de pagar, volvé a esta pestaña (botón Atrás) y tocá «Verificar pago».
-            </p>
-            {% endif %}
-        {% endif %}
-    </div>
-    {% endif %}
-
     <div class="flex gap-2 no-print font-body-md">
         <button type="button" onclick="window.print()" class="flex-1 border border-outline-variant py-2.5 rounded-xl text-sm font-semibold hover:bg-surface-container-low">
             Imprimir
@@ -109,12 +48,4 @@
         </a>
     </div>
 </div>
-{% endblock %}
-
-{% block extra_scripts %}
-<script>
-    // Si el navegador restaura el ticket de su memoria al tocar "Atrás" desde Mercado Pago,
-    // lo recargamos para ver el estado real del cobro (y el botón "Verificar pago").
-    window.addEventListener('pageshow', (evento) => { if (evento.persisted) location.reload(); });
-</script>
 {% endblock %}

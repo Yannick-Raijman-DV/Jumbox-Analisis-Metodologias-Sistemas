@@ -1,6 +1,41 @@
 {% extends "base.html" %}
 {% block title %}JUMBOX - Logística y Envíos a Domicilio{% endblock %}
 {% block content %}
+{#
+  Macro = "función" de Jinja que devuelve HTML. La usamos para no repetir el bloque de
+  resultado de Geoapify (mapa + km + minutos + costo) en el cuadro "Probar dirección"
+  y en cada tarjeta de envío. El JS de abajo encuentra cada parte por su atributo data-geo-*.
+#}
+{% macro bloque_ruta() %}
+<p data-geo-cargando class="hidden text-xs text-on-surface-variant">Calculando ruta con Geoapify...</p>
+<p data-geo-error class="hidden text-xs font-semibold text-on-error-container bg-error-container rounded-lg px-3 py-2"></p>
+<div data-geo-resultado class="hidden space-y-2">
+    <img data-geo-mapa alt="Mapa con la sucursal (azul) y el domicilio (verde)" width="600" height="300" loading="lazy"
+         class="w-full h-auto rounded-lg border border-outline-variant bg-surface-container-low"/>
+    <p data-geo-sin-mapa class="hidden text-xs text-on-surface-variant bg-surface-container-low rounded-lg px-3 py-6 text-center">Mapa no disponible</p>
+    <p data-geo-direccion class="text-xs text-on-surface-variant"></p>
+    <div class="grid grid-cols-3 gap-2 text-center">
+        <div class="rounded-lg bg-surface-container-low py-2">
+            <p class="text-[10px] uppercase tracking-wide font-semibold text-on-surface-variant">Distancia</p>
+            <p data-geo-km class="font-label-md font-bold text-primary"></p>
+        </div>
+        <div class="rounded-lg bg-surface-container-low py-2">
+            <p class="text-[10px] uppercase tracking-wide font-semibold text-on-surface-variant">Tiempo</p>
+            <p data-geo-minutos class="font-label-md font-bold text-primary"></p>
+        </div>
+        <div class="rounded-lg bg-surface-container-low py-2">
+            <p class="text-[10px] uppercase tracking-wide font-semibold text-on-surface-variant">Costo estimado</p>
+            <p data-geo-costo class="font-label-md font-bold text-secondary"></p>
+        </div>
+    </div>
+    <p data-geo-aviso class="hidden text-xs font-semibold bg-[#f59e0b]/20 text-[#6c4300] rounded-lg px-3 py-2"></p>
+    <p class="text-[10px] text-on-surface-variant">
+        Powered by <a href="https://www.geoapify.com/" target="_blank" rel="noopener" class="underline hover:text-primary">Geoapify</a>
+        · © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener" class="underline hover:text-primary">OpenStreetMap</a> contributors
+    </p>
+</div>
+{% endmacro %}
+
 <div class="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
     <div>
         <h2 class="text-2xl font-bold text-on-surface">Logística y Envíos a Domicilio</h2>
@@ -21,6 +56,51 @@
         </a>
     </div>
 </div>
+
+{% if geo_configurada %}
+<!-- Cuadro "Probar dirección": cualquier dirección -> mapa, distancia, tiempo y costo (Geoapify) -->
+<section id="geo-probar" data-geo-caja class="bg-white p-5 rounded-xl border border-outline-variant shadow-sm mb-6 grid grid-cols-1 lg:grid-cols-2 gap-5">
+    <div>
+        <div class="flex items-center gap-2 mb-1">
+            <span class="material-symbols-outlined text-primary">map</span>
+            <h3 class="font-bold text-on-surface">Probar dirección</h3>
+        </div>
+        <p class="text-xs text-on-surface-variant mb-3">
+            Calculá la distancia en auto, el tiempo y el costo estimado de un envío desde <strong>{{ sucursal_nombre }}</strong>.
+            Costo = <span class="font-label-md">${{ '%.0f'|format(config.ENVIO_COSTO_BASE) }}</span> fijo
+            + <span class="font-label-md">${{ '%.0f'|format(config.ENVIO_COSTO_KM) }}</span> por km.
+        </p>
+        <form id="geo-form" data-url="{{ url_for('logistica.api_cotizar') }}" class="flex flex-col sm:flex-row gap-2">
+            <input id="geo-direccion" type="text" maxlength="200" required autocomplete="off"
+                   placeholder="Av. Cabildo 1540, CABA" class="flex-1 rounded-lg border-outline-variant text-sm"/>
+            <button type="submit" class="bg-secondary text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-[#10b981] disabled:opacity-60">
+                Calcular envío
+            </button>
+        </form>
+        <p class="text-[11px] text-on-surface-variant mt-2">En el mapa: <span class="font-bold text-primary">azul</span> = sucursal · <span class="font-bold text-secondary">verde</span> = domicilio.</p>
+    </div>
+    <div class="space-y-2">
+        <p data-geo-vacio class="text-xs text-on-surface-variant bg-surface-container-low rounded-lg px-3 py-6 text-center">
+            Escribí una dirección y tocá «Calcular envío» para ver el mapa.
+        </p>
+        {{ bloque_ruta() }}
+    </div>
+</section>
+{% else %}
+<!-- Sin key: avisamos cómo activarla y no mostramos botones que no funcionarían -->
+<section class="mb-6 flex items-start gap-3 p-4 rounded-xl border border-[#f59e0b]/60 bg-[#f59e0b]/10">
+    <span class="material-symbols-outlined text-[#6c4300]">map</span>
+    <div class="text-sm text-[#6c4300]">
+        <p class="font-bold">Mapa, distancia y costo de envío desactivados</p>
+        <p class="text-xs mt-1">
+            Falta configurar <code class="font-label-md">GEOAPIFY_API_KEY</code> en <code class="font-label-md">.env</code>.
+            Creá una key gratis (sin tarjeta) en
+            <a href="https://myprojects.geoapify.com" target="_blank" rel="noopener" class="underline font-semibold">myprojects.geoapify.com</a>,
+            pegala en <code class="font-label-md">.env</code> (y en Render → Environment) y reiniciá el servidor.
+        </p>
+    </div>
+</section>
+{% endif %}
 
 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
     {% for e in envios %}
@@ -44,6 +124,16 @@
             <p class="text-xs italic text-on-surface-variant mt-1">«{{ e.observaciones }}»</p>
             {% endif %}
         </div>
+
+        {% if geo_configurada %}
+        <!-- Ruta del envío: los primeros 6 se cargan solos (data-geo-auto), el resto al tocar "Ver ruta" -->
+        <div data-geo-caja data-url="{{ url_for('logistica.ruta_envio', envio_id=e.id) }}" {% if loop.index <= 6 %}data-geo-auto{% endif %} class="space-y-2">
+            <button type="button" data-geo-boton class="w-full border border-primary text-primary py-1.5 rounded-lg text-xs font-bold hover:bg-primary-fixed disabled:opacity-60">
+                Ver ruta
+            </button>
+            {{ bloque_ruta() }}
+        </div>
+        {% endif %}
 
         {% if e.estado != 'Entregado' %}
         <form method="post" action="{{ url_for('logistica.actualizar_estado', envio_id=e.id) }}" class="pt-3 border-t border-outline-variant space-y-2 text-xs">
@@ -72,4 +162,114 @@
     </div>
     {% endfor %}
 </div>
+{% endblock %}
+
+{% block extra_scripts %}
+{% if geo_configurada %}
+<script>
+(() => {
+    // Formatos argentinos: "7,8 km" y "$ 4.620"
+    const pesos = new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 });
+    const decimal = new Intl.NumberFormat("es-AR", { maximumFractionDigits: 1 });
+
+    // Busca dentro de una caja el elemento marcado con data-geo-<nombre>
+    const parte = (caja, nombre) => caja.querySelector(`[data-geo-${nombre}]`);
+    const mostrar = (caja, nombre, visible) => {
+        const el = parte(caja, nombre);
+        if (el) el.classList.toggle("hidden", !visible);
+    };
+
+    // Pinta la respuesta del backend en la caja. Solo usamos textContent y atributos:
+    // nunca innerHTML con datos que vienen del usuario o de la API (evita inyectar HTML).
+    function pintar(caja, data) {
+        mostrar(caja, "cargando", false);
+        mostrar(caja, "vacio", false);
+        if (!data.ok) {
+            parte(caja, "error").textContent = data.error || "No se pudo calcular la ruta.";
+            mostrar(caja, "error", true);
+            mostrar(caja, "resultado", false);
+            return false;
+        }
+        const img = parte(caja, "mapa");
+        img.classList.remove("hidden");
+        mostrar(caja, "sin-mapa", false);
+        img.src = data.mapa_url;  // apunta a nuestra ruta /envios/mapa.png (la key queda en el servidor)
+        parte(caja, "direccion").textContent = data.direccion_formateada;
+        parte(caja, "km").textContent = `${decimal.format(data.km)} km`;
+        parte(caja, "minutos").textContent = `${data.minutos} min`;
+        parte(caja, "costo").textContent = pesos.format(data.costo);
+        parte(caja, "aviso").textContent = data.aviso || "";
+        mostrar(caja, "aviso", Boolean(data.aviso));
+        mostrar(caja, "error", false);
+        mostrar(caja, "resultado", true);
+        return true;
+    }
+
+    // Hace el fetch al backend de Flask y pinta el resultado. Devuelve true si salió bien.
+    async function consultar(caja, url, opciones) {
+        mostrar(caja, "error", false);
+        mostrar(caja, "cargando", true);
+        try {
+            const resp = await fetch(url, opciones);
+            return pintar(caja, await resp.json());
+        } catch (_err) {
+            return pintar(caja, { ok: false, error: "No se pudo conectar con el servidor." });
+        }
+    }
+
+    // Si la imagen del mapa falla (Geoapify caído o sin créditos), mostramos un texto en vez del ícono roto
+    document.querySelectorAll("[data-geo-mapa]").forEach((img) => {
+        img.addEventListener("error", () => {
+            if (!img.getAttribute("src")) return;
+            img.classList.add("hidden");
+            img.parentElement.querySelector("[data-geo-sin-mapa]").classList.remove("hidden");
+        });
+    });
+
+    // 1) Cuadro "Probar dirección" (POST con la dirección escrita)
+    const form = document.getElementById("geo-form");
+    if (form) {
+        const caja = document.getElementById("geo-probar");
+        const input = document.getElementById("geo-direccion");
+        const boton = form.querySelector("button");
+        form.addEventListener("submit", async (ev) => {
+            ev.preventDefault();  // no recargar la página: lo hacemos con fetch
+            boton.disabled = true;
+            await consultar(caja, form.dataset.url, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ direccion: input.value }),
+            });
+            boton.disabled = false;
+        });
+    }
+
+    // 2) "Ver ruta" de cada envío (GET /envios/<id>/ruta)
+    async function verRuta(caja) {
+        const boton = parte(caja, "boton");
+        boton.disabled = true;
+        const ok = await consultar(caja, caja.dataset.url);
+        boton.disabled = false;
+        if (ok) {
+            boton.classList.add("hidden");  // la ruta ya está a la vista
+        } else {
+            boton.textContent = "Reintentar";
+        }
+    }
+
+    document.querySelectorAll("[data-geo-caja][data-url]").forEach((caja) => {
+        parte(caja, "boton").addEventListener("click", () => verRuta(caja));
+    });
+
+    // Los primeros 6 envíos se cargan solos, DE A UNO y con una pausa corta,
+    // para no pasar el límite de 5 consultas por segundo del plan Free de Geoapify.
+    (async () => {
+        for (const caja of document.querySelectorAll("[data-geo-caja][data-geo-auto]")) {
+            await verRuta(caja);
+            await new Promise((listo) => setTimeout(listo, 300));
+        }
+    })();
+})();
+</script>
+{% endif %}
 {% endblock %}

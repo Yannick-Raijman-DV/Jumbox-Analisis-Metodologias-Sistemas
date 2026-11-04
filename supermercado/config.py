@@ -41,6 +41,17 @@ class Config:
     LLM_MODEL = os.environ.get("LLM_MODEL") or "Qwen/Qwen2.5-0.5B-Instruct"
     LLM_MAX_TOKENS = int(os.environ.get("LLM_MAX_TOKENS") or 300)
 
+    # Geoapify (API externa con API key): ubica la dirección del envío, calcula la ruta y dibuja el mapa
+    GEOAPIFY_API_KEY = os.environ.get("GEOAPIFY_API_KEY") or None
+    SUCURSAL_NOMBRE = os.environ.get("SUCURSAL_NOMBRE") or "Sucursal Centro"
+    SUCURSAL_LAT = float(os.environ.get("SUCURSAL_LAT") or -34.6037)  # Obelisco, CABA
+    SUCURSAL_LON = float(os.environ.get("SUCURSAL_LON") or -58.3816)
+    ENVIO_COSTO_BASE = float(os.environ.get("ENVIO_COSTO_BASE") or 1500)  # $ fijo por envío
+    ENVIO_COSTO_KM = float(os.environ.get("ENVIO_COSTO_KM") or 400)  # $ por km recorrido
+
+    # Mercado Pago (API externa con Access Token de PRUEBA): cobro del ticket con Checkout Pro
+    MP_ACCESS_TOKEN = os.environ.get("MP_ACCESS_TOKEN") or None
+
     # Reglas de negocio
     DIAS_ALERTA_VENCIMIENTO = 7
     PESOS_POR_PUNTO = 100  # 1 punto de fidelización cada $100
@@ -53,6 +64,8 @@ class TestingConfig(Config):
     SQLALCHEMY_DATABASE_URI = "sqlite:///:memory:"
     S3_BUCKET = None
     LLM_ENABLED = False
+    GEOAPIFY_API_KEY = None
+    MP_ACCESS_TOKEN = None
     SEED_AUTOMATICO = True
     GOOGLE_CLIENT_ID = "test-client-id"
     GOOGLE_CLIENT_SECRET = "test-client-secret"

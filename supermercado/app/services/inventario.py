@@ -357,6 +357,7 @@ def calcular_candidatos_reposicion(dias_ventas: int = 30, dias_cobertura: int = 
         base = {
             "producto_id": p.id, "nombre": p.nombre, "sku": p.sku,
             "proveedor_id": p.proveedor_id, "proveedor": p.proveedor.nombre,
+            "deuda_proveedor": p.proveedor.deuda or 0.0,
             "stock_gondola": p.stock_gondola, "stock_deposito": p.stock_deposito,
             "stock_minimo": p.stock_minimo, "vendidas": vendidas.get(p.id, 0),
             "venta_diaria": round(venta_diaria, 2), "dias_para_vencer": dias,

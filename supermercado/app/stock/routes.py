@@ -1,7 +1,7 @@
 """Blueprint de Stock e Inventario: productos (con foto en S3), semáforo, traslados, mermas y movimientos."""
 from datetime import date
 
-from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
+from flask import Blueprint, abort, flash, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user
 
 from ..decorators import rol_requerido
@@ -16,6 +16,7 @@ from ..models import (
     Producto,
     Proveedor,
 )
+from ..services import openfoodfacts as off
 from ..services import s3
 from ..services.inventario import (
     ErrorNegocio,
@@ -106,9 +107,43 @@ def _leer_form_producto(producto_actual: Producto | None = None):
     }, None
 
 
+def _guardar_foto_de_off(producto: Producto) -> None:
+    """Sin foto subida a mano: baja la de Open Food Facts (si el usuario la aceptó) y la guarda en S3."""
+    url = (request.form.get("off_imagen_url") or "").strip()
+    if not url:
+        return
+    try:
+        archivo, ext = off.descargar_imagen(url)
+    except off.ErrorOFF as err:
+        flash(f"El producto se guardó, pero {err.mensaje[0].lower() + err.mensaje[1:]}", "warning")
+        return
+    anterior = producto.foto_key
+    producto.foto_key = s3.subir_archivo(archivo, f"off{ext}", carpeta="productos")
+    db.session.commit()
+    if anterior and not anterior.startswith("productos/seed/"):
+        s3.borrar(anterior)
+
+
+@bp.route("/api/off/<codigo>")
+@rol_requerido(ROL_ADMIN, ROL_OPERARIO)
+def api_off(codigo: str):
+    """Open Food Facts por código de barras: nombre, marca, foto y proveedor sugerido."""
+    try:
+        datos = off.buscar_por_codigo(codigo)
+    except off.ErrorOFF as err:
+        return jsonify({"ok": False, "error": err.mensaje}), 404
+    prov = off.sugerir_proveedor(datos["marca"] or datos["fabricante"], Proveedor.query.all())
+    return jsonify({
+        "ok": True, **datos,
+        "proveedor_id": prov.id if prov else None,
+        "proveedor_nombre": prov.nombre if prov else None,
+    })
+
+
 def _guardar_foto_si_vino(producto: Producto):
     foto = request.files.get("foto")
     if not foto or not foto.filename:
+        _guardar_foto_de_off(producto)
         return
     anterior = producto.foto_key
     producto.foto_key = s3.subir_archivo(foto, foto.filename, carpeta="productos")

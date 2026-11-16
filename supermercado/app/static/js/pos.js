@@ -31,6 +31,31 @@
         setTimeout(() => alertaBox.classList.add("hidden"), 5000);
     }
 
+    // Cotización del dólar (DolarAPI vía /pos/api/dolar): equivalente en USD del total
+    const dolarInfo = document.getElementById("pos-dolar-info");
+    const totalUsdEl = document.getElementById("pos-total-usd");
+    let dolarVenta = null;
+    let totalPesos = 0;
+
+    function actualizarUsd() {
+        totalUsdEl.textContent = dolarVenta ? "≈ US$ " + (totalPesos / dolarVenta).toFixed(2) : "—";
+    }
+
+    async function cargarDolar() {
+        if (!dolarInfo) return;
+        try {
+            const resp = await fetch(dolarInfo.dataset.url);
+            const d = await resp.json();
+            if (!d.ok) throw new Error(d.error);
+            dolarVenta = Number(d.venta);
+            dolarInfo.textContent = `Dólar ${d.tipo}: $${dolarVenta.toFixed(2)}` + (d.desactualizada ? " (desactualizado)" : "");
+        } catch (e) {
+            dolarVenta = null;
+            dolarInfo.textContent = "Dólar no disponible (se vende igual en pesos)";
+        }
+        actualizarUsd();
+    }
+
     function formatear(n) {
         return "$" + Number(n).toFixed(2);
     }
@@ -68,6 +93,8 @@
             itemsContainer.appendChild(fila);
         });
 
+        totalPesos = total;
+        actualizarUsd();
         subtotalEl.textContent = formatear(total);
         totalEl.textContent = formatear(total);
         puntosEl.textContent = "+" + Math.floor(total / 100) + " pts";
@@ -106,6 +133,8 @@
         }
         renderizar();
     }
+
+    cargarDolar();
 
     document.querySelectorAll(".pos-producto-card").forEach((card) => {
         card.addEventListener("click", () => agregarProducto(card));

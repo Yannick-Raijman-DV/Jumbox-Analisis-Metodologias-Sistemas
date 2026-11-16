@@ -14,11 +14,15 @@
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
                 <label class="block text-xs font-semibold uppercase mb-1">Nombre *</label>
-                <input type="text" name="nombre" required value="{{ producto.nombre if producto else '' }}" class="w-full rounded-xl border-outline-variant text-sm"/>
+                <input type="text" id="nombre-producto" name="nombre" required value="{{ producto.nombre if producto else '' }}" class="w-full rounded-xl border-outline-variant text-sm"/>
             </div>
             <div>
                 <label class="block text-xs font-semibold uppercase mb-1">Código de Barras (EAN-13)</label>
-                <input type="text" name="codigo_barras" value="{{ producto.codigo_barras if producto and producto.codigo_barras else '' }}" class="w-full rounded-xl border-outline-variant text-sm font-label-sm"/>
+                <div class="flex gap-2">
+                    <input type="text" id="codigo-barras" name="codigo_barras" inputmode="numeric" value="{{ producto.codigo_barras if producto and producto.codigo_barras else '' }}" class="w-full rounded-xl border-outline-variant text-sm font-label-sm"/>
+                    <button type="button" id="btn-off" data-url="{{ url_for('stock.api_off', codigo='CODIGO') }}" class="shrink-0 px-3 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary-container" title="Buscar nombre, marca y foto en Open Food Facts">Buscar</button>
+                </div>
+                <p id="off-msg" class="hidden mt-1 text-xs"></p>
             </div>
         </div>
 
@@ -37,7 +41,7 @@
             </div>
             <div>
                 <label class="block text-xs font-semibold uppercase mb-1">Proveedor *</label>
-                <select name="proveedor_id" class="w-full rounded-xl border-outline-variant text-sm">
+                <select id="proveedor-id" name="proveedor_id" class="w-full rounded-xl border-outline-variant text-sm">
                     {% for pr in proveedores %}
                     <option value="{{ pr.id }}" {% if producto and producto.proveedor_id == pr.id %}selected{% endif %}>{{ pr.nombre }}</option>
                     {% endfor %}
@@ -72,6 +76,15 @@
                 <span class="text-xs font-label-sm text-on-surface-variant">Key actual: {{ producto.foto_key }}</span>
             </div>
             {% endif %}
+            <div id="off-foto" class="hidden flex items-center gap-3 mb-2 p-2 rounded-lg bg-white border border-outline-variant">
+                <img id="off-foto-img" src="" alt="" class="w-16 h-16 object-contain"/>
+                <div class="text-xs flex-1">
+                    <p class="font-bold">Foto encontrada en Open Food Facts</p>
+                    <p class="text-on-surface-variant">Se guarda al grabar el producto, salvo que subas otra imagen.</p>
+                </div>
+                <button type="button" id="off-foto-quitar" class="text-xs text-error font-semibold hover:underline">Quitar</button>
+            </div>
+            <input type="hidden" id="off-imagen-url" name="off_imagen_url" value=""/>
             <input type="file" name="foto" accept=".jpg,.jpeg,.png,.webp,.gif" class="w-full text-xs"/>
         </div>
 
@@ -83,4 +96,47 @@
         </div>
     </form>
 </div>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+(() => {
+    const btn = document.getElementById("btn-off");
+    if (!btn) return;
+    const codigo = document.getElementById("codigo-barras");
+    const nombre = document.getElementById("nombre-producto");
+    const proveedor = document.getElementById("proveedor-id");
+    const msg = document.getElementById("off-msg");
+    const fotoBox = document.getElementById("off-foto");
+    const fotoImg = document.getElementById("off-foto-img");
+    const fotoUrl = document.getElementById("off-imagen-url");
+
+    function aviso(texto, error) {
+        msg.textContent = texto;
+        msg.className = "mt-1 text-xs " + (error ? "text-error" : "text-secondary");
+    }
+    function quitarFoto() { fotoUrl.value = ""; fotoBox.classList.add("hidden"); }
+    document.getElementById("off-foto-quitar").addEventListener("click", quitarFoto);
+
+    btn.addEventListener("click", async () => {
+        const c = (codigo.value || "").trim();
+        if (!c) { aviso("Escribí o escaneá un código de barras.", true); return; }
+        btn.disabled = true; aviso("Buscando en Open Food Facts…", false);
+        try {
+            const resp = await fetch(btn.dataset.url.replace("CODIGO", encodeURIComponent(c)));
+            const d = await resp.json();
+            if (!d.ok) { aviso(d.error, true); quitarFoto(); return; }
+            if (d.nombre && !nombre.value) nombre.value = d.nombre.slice(0, 45);
+            let extra = d.marca ? " Marca: " + d.marca + "." : "";
+            if (d.proveedor_id) { proveedor.value = d.proveedor_id; extra += " Proveedor sugerido: " + d.proveedor_nombre + "."; }
+            else if (d.marca) { extra += " No coincide con ningún proveedor cargado: elegilo a mano."; }
+            if (d.imagen_url) { fotoUrl.value = d.imagen_url; fotoImg.src = d.imagen_url; fotoBox.classList.remove("hidden"); }
+            else { quitarFoto(); extra += " Sin foto en la base."; }
+            aviso("Producto encontrado." + extra, false);
+        } catch (e) {
+            aviso("No se pudo consultar Open Food Facts.", true);
+        } finally { btn.disabled = false; }
+    });
+    codigo.addEventListener("keydown", (ev) => { if (ev.key === "Enter") { ev.preventDefault(); btn.click(); } });
+})();
+</script>
 {% endblock %}

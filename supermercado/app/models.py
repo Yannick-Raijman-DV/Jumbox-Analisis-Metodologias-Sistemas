@@ -373,3 +373,22 @@ class PagoMP(db.Model):
     def pendiente(self) -> bool:
         """True si la order todavía puede terminar pagada (created, processing, action_required...)."""
         return self.estado not in ("processed", "failed", "canceled", "expired", "refunded")
+
+
+class VentaCotizacion(db.Model):
+    """Tabla nueva: cotización del dólar (DolarAPI) usada al momento de cada venta.
+
+    Se guarda para que el ticket muestre siempre el mismo cambio, aunque el dólar se mueva
+    después. Es tabla nueva: db.create_all() la crea sin migrar las existentes.
+    """
+    __tablename__ = "ventas_cotizacion"
+
+    id = db.Column(db.Integer, primary_key=True)
+    venta_id = db.Column(db.Integer, db.ForeignKey("ventas.id_venta"), unique=True, nullable=False)
+    tipo = db.Column(db.String(30), nullable=False)  # oficial, blue, ...
+    valor_venta = db.Column(db.Float, nullable=False)  # $ por 1 USD
+    total_usd = db.Column(db.Float, nullable=False)
+    desactualizada = db.Column(db.Boolean, nullable=False, default=False)
+    fecha = db.Column(db.DateTime, nullable=False, default=ahora)
+
+    venta = db.relationship("Venta", backref=db.backref("cotizacion", uselist=False))

@@ -52,6 +52,13 @@ class Config:
     # Mercado Pago (API externa con Access Token de PRUEBA): cobro del ticket con Checkout Pro
     MP_ACCESS_TOKEN = os.environ.get("MP_ACCESS_TOKEN") or None
 
+    # DolarAPI (API externa pública, sin key): cotización del dólar al momento de la venta
+    DOLAR_TIPO = os.environ.get("DOLAR_TIPO") or "oficial"  # oficial | blue | tarjeta | mep ...
+    DOLAR_CACHE_SEGUNDOS = int(os.environ.get("DOLAR_CACHE_SEGUNDOS") or 300)
+
+    # Open Food Facts (API externa pública, sin key): foto y marca/proveedor por código de barras
+    OFF_USER_AGENT = os.environ.get("OFF_USER_AGENT") or "Jumbox/1.0 (proyecto academico Da Vinci)"
+
     # Reglas de negocio
     DIAS_ALERTA_VENCIMIENTO = 7
     PESOS_POR_PUNTO = 100  # 1 punto de fidelización cada $100
@@ -66,6 +73,7 @@ class TestingConfig(Config):
     LLM_ENABLED = False
     GEOAPIFY_API_KEY = None
     MP_ACCESS_TOKEN = None
+    DOLAR_CACHE_SEGUNDOS = 300
     SEED_AUTOMATICO = True
     GOOGLE_CLIENT_ID = "test-client-id"
     GOOGLE_CLIENT_SECRET = "test-client-secret"

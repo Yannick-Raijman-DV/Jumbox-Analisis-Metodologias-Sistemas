@@ -285,3 +285,18 @@ sequenceDiagram
 - Back URLs y compra de prueba: <https://www.mercadopago.com.ar/developers/es/docs/checkout-pro-orders/web-integration/configure-back-urls> · <https://www.mercadopago.com.ar/developers/es/docs/checkout-pro-orders/integration-test/test-purchase-with-card>
 - Credenciales: <https://www.mercadopago.com.ar/developers/es/docs/your-integrations/credentials>
 - Render: <https://render.com/docs/free> · <https://render.com/docs/configure-environment-variables>
+
+
+---
+
+## 7. APIs sin key: DolarAPI y Open Food Facts (agregadas 16/11/2026)
+
+Las dos son públicas y **no necesitan key**: no hay nada que sacar ni cargar en Render (solo las variables opcionales de `.env.example`).
+
+| API | Dónde se ve | Qué hace | Endpoint | Código |
+|---|---|---|---|---|
+| **DolarAPI** | **POS** (`/pos`) y ticket | Muestra el dólar vigente y el total del ticket en USD. Al confirmar la venta **guarda la cotización usada** (tabla nueva `ventas_cotizacion`), así el ticket no cambia si el dólar se mueve. Si la API cae, la venta se hace igual en pesos | `GET https://dolarapi.com/v1/dolares/{tipo}` | `app/services/dolar.py`, `GET /pos/api/dolar` |
+| **Open Food Facts** | **Stock → Nuevo/Editar producto** | Botón "Buscar" junto al código de barras: completa nombre, sugiere el **proveedor** por la marca y ofrece la **foto** del producto, que se guarda en S3 al grabar | `GET https://world.openfoodfacts.org/api/v2/product/{codigo}.json` | `app/services/openfoodfacts.py`, `GET /stock/api/off/<codigo>` |
+
+Variables opcionales: `DOLAR_TIPO` (oficial, blue, tarjeta, mep...), `DOLAR_CACHE_SEGUNDOS`, `OFF_USER_AGENT`.
+Tests con la red mockeada: `tests/test_apis_dolar_off.py`.

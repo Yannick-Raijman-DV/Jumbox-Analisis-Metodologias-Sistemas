@@ -6,7 +6,8 @@ from flask_login import current_user
 
 from ..decorators import rol_requerido
 from ..extensions import db
-from ..models import ROL_ADMIN, ROL_CAJERO, Categoria, Cliente, PagoMP, Producto, Venta, ahora
+from ..models import ROL_ADMIN, ROL_CAJERO, Categoria, Cliente, PagoMP, Producto, Venta, VentaCotizacion, ahora
+from ..services import dolar
 from ..services import mercadopago as mp
 from ..services.inventario import METODOS_PAGO, ErrorNegocio, registrar_venta
 
@@ -47,14 +48,28 @@ def api_registrar_venta():
     except ErrorNegocio as err:
         return jsonify({"ok": False, "error": str(err)}), 400
 
+    cambio = _guardar_cotizacion(nueva)
+
     return jsonify(
         {
             "ok": True,
             "venta_id": nueva.id,
             "total": nueva.total,
+            "total_usd": cambio.total_usd if cambio else None,
             "ticket_url": url_for("pos.ticket", venta_id=nueva.id),
         }
     ), 201
+
+
+@bp.route("/api/dolar")
+@rol_requerido(ROL_ADMIN, ROL_CAJERO)
+def api_dolar():
+    """Cotización vigente del dólar (DolarAPI) para mostrar el equivalente en USD en el POS."""
+    try:
+        cot = dolar.cotizacion()
+    except dolar.ErrorDolar as err:
+        return jsonify({"ok": False, "error": err.mensaje}), 502
+    return jsonify({"ok": True, **cot})
 
 
 @bp.route("/ticket/<int:venta_id>")
@@ -162,6 +177,20 @@ def mp_verificar(venta_id: int):
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+def _guardar_cotizacion(venta_obj: Venta) -> VentaCotizacion | None:
+    """Congela el cambio del dólar usado en esta venta. Si DolarAPI falla, la venta sigue igual (sin cambio)."""
+    cot = dolar.cotizacion_o_none()
+    if cot is None:
+        return None
+    registro = VentaCotizacion(
+        venta_id=venta_obj.id, tipo=cot["tipo"], valor_venta=cot["venta"],
+        total_usd=dolar.pesos_a_usd(venta_obj.total, cot["venta"]), desactualizada=cot["desactualizada"],
+    )
+    db.session.add(registro)
+    db.session.commit()
+    return registro
+
 
 def _venta_o_404(venta_id: int) -> Venta:
     venta_obj = db.session.get(Venta, venta_id)

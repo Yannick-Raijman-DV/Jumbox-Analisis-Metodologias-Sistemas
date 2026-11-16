@@ -41,6 +41,11 @@
         <span>TOTAL</span>
         <span>${{ "%.2f"|format(venta.total) }}</span>
     </div>
+    {% if venta.cotizacion %}
+    <div class="-mt-4 mb-6 text-xs text-on-surface-variant flex justify-between">
+        <span>≈ US$ {{ "%.2f"|format(venta.cotizacion.total_usd) }} (dólar {{ venta.cotizacion.tipo }} a ${{ "%.2f"|format(venta.cotizacion.valor_venta) }}{% if venta.cotizacion.desactualizada %}, cotización desactualizada{% endif %})</span>
+    </div>
+    {% endif %}
 
     {# Cobro con Mercado Pago (no se imprime). El token nunca llega acá: solo estados y links propios. #}
     {% if venta.metodo_pago == 'Mercado Pago' %}

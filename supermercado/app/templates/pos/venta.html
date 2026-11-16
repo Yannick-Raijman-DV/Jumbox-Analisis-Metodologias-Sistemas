@@ -131,6 +131,10 @@
                     <span>Total a Cobrar</span>
                     <span id="pos-total" class="font-label-md text-primary">$0.00</span>
                 </div>
+                <div class="flex justify-between text-xs text-on-surface-variant">
+                    <span id="pos-dolar-info" data-url="{{ url_for('pos.api_dolar') }}">Dólar: consultando…</span>
+                    <span id="pos-total-usd" class="font-label-md font-bold">—</span>
+                </div>
             </div>
 
             <button type="button" id="pos-btn-cobrar" data-url="{{ url_for('pos.api_registrar_venta') }}" disabled

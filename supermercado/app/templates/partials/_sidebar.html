@@ -39,7 +39,8 @@
         {{ nav(url_for('main.index'), 'home', 'Inicio', request.endpoint == 'main.index') }}
 
         {% if current_user.is_authenticated and current_user.tiene_rol('Admin', 'Cajero') %}
-        {{ nav(url_for('pos.venta'), 'point_of_sale', 'Caja', request.blueprint == 'pos') }}
+        {{ nav(url_for('pos.venta'), 'point_of_sale', 'Caja', request.endpoint in ('pos.venta', 'pos.ticket')) }}
+        {{ nav(url_for('pos.historial'), 'bar_chart', 'Ventas', request.endpoint == 'pos.historial') }}
         {% endif %}
 
         {% if current_user.is_authenticated and current_user.tiene_rol('Admin', 'Operario') %}

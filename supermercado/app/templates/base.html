@@ -113,6 +113,7 @@
             </form>
 
             <div class="ml-auto flex items-center gap-2 shrink-0">
+                {% if current_user.is_authenticated and current_user.tiene_rol('Admin', 'Operario') %}
                 <span class="hidden lg:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold {% if usa_s3 %}bg-secondary-container/60 text-on-secondary-fixed{% else %}bg-surface-container text-on-surface-variant{% endif %}" title="Dónde se guardan las fotos y comprobantes">
                     <span class="material-symbols-outlined text-[16px]">{% if usa_s3 %}cloud_done{% else %}cloud_off{% endif %}</span>
                     <span>{% if usa_s3 %}Fotos en la nube{% else %}Fotos en este equipo{% endif %}</span>
@@ -122,6 +123,7 @@
                     <span class="material-symbols-outlined text-[16px]">auto_awesome</span>
                     <span>{% if estado_llm.habilitada %}Asistente IA activo{% else %}Asistente básico{% endif %}</span>
                 </a>
+                {% endif %}
             </div>
         </header>
 

@@ -1,18 +1,32 @@
 {% extends "base.html" %}
 {% block title %}JUMBOX - Dashboard Principal{% endblock %}
 {% block content %}
-<!-- Encabezado -->
-<div class="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
+<!-- Encabezado común -->
+<div class="mb-7 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
     <div>
         <p class="text-sm text-on-surface-variant" id="fecha-hoy"></p>
         <h2 class="text-3xl md:text-4xl text-primary font-bold tracking-tight mt-1">Hola, {{ current_user.nombre.split(' ')[0] }}</h2>
-        <p class="text-base text-on-surface-variant mt-1.5">Así viene el día en la tienda.</p>
+        <p class="text-base text-on-surface-variant mt-1">
+            {% if current_user.tiene_rol('Cajero') %}
+                Panel de Caja · Resumen de ventas y productos más solicitados.
+            {% elif current_user.tiene_rol('Operario') %}
+                Panel de Depósito y Góndola · Stock, vencimientos y reposición.
+            {% else %}
+                Panel Ejecutivo · Accesos rápidos y reportes clave de la tienda.
+            {% endif %}
+        </p>
     </div>
     <div class="flex flex-wrap gap-2">
         {% if current_user.tiene_rol('Admin', 'Cajero') %}
         <a href="{{ url_for('pos.venta') }}" class="bg-secondary text-white px-5 py-2.5 rounded-full text-sm font-bold hover:bg-[#10b981] transition-colors shadow-card flex items-center gap-2">
             <span class="material-symbols-outlined fill text-[20px]">add_circle</span>
             <span>Nueva venta</span>
+        </a>
+        {% endif %}
+        {% if current_user.tiene_rol('Cajero') %}
+        <a href="{{ url_for('pos.historial') }}" class="bg-white text-primary border border-outline-variant px-5 py-2.5 rounded-full text-sm font-semibold hover:bg-surface-container-low transition-colors flex items-center gap-2">
+            <span class="material-symbols-outlined text-[20px]">bar_chart</span>
+            <span>Ver ventas</span>
         </a>
         {% endif %}
         {% if current_user.tiene_rol('Admin', 'Operario') %}
@@ -24,170 +38,251 @@
     </div>
 </div>
 
-<!-- Resumen -->
-<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+
+{# ========================================================================== #}
+{# 1. VISTA CAJERO                                                            #}
+{# ========================================================================== #}
+{% if current_user.tiene_rol('Cajero') %}
+
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
     <div class="bg-white p-5 rounded-2xl shadow-card">
         <div class="flex items-center justify-between">
-            <p class="text-sm text-on-surface-variant font-medium">Ventas totales</p>
+            <p class="text-sm text-on-surface-variant font-medium">Ventas de hoy</p>
             <span class="w-9 h-9 rounded-full bg-secondary-container/60 text-secondary flex items-center justify-center"><span class="material-symbols-outlined text-[20px]">payments</span></span>
         </div>
-        <h3 class="font-label-md text-2xl font-bold text-on-surface mt-3">${{ "%.2f"|format(ventas_totales) }}</h3>
-        <p class="text-sm text-secondary font-semibold mt-1">Hoy: ${{ "%.2f"|format(ventas_hoy_total) }} en {{ ventas_hoy_cantidad }} {{ 'venta' if ventas_hoy_cantidad == 1 else 'ventas' }}</p>
+        <h3 class="font-label-md text-2xl font-bold text-on-surface mt-3">${{ "%.2f"|format(ventas_hoy_total) }}</h3>
+        <p class="text-sm text-secondary font-semibold mt-1">{{ ventas_hoy_cantidad }} {{ 'ticket hoy' if ventas_hoy_cantidad == 1 else 'tickets hoy' }} · Acumulado ${{ "%.2f"|format(ventas_totales) }}</p>
     </div>
 
     <div class="bg-white p-5 rounded-2xl shadow-card">
         <div class="flex items-center justify-between">
-            <p class="text-sm text-on-surface-variant font-medium">Envíos pendientes</p>
+            <p class="text-sm text-on-surface-variant font-medium">Producto más vendido</p>
+            <span class="w-9 h-9 rounded-full bg-primary-fixed text-primary flex items-center justify-center"><span class="material-symbols-outlined text-[20px]">trending_up</span></span>
+        </div>
+        {% if mas_vendidos %}
+        <h3 class="text-2xl font-bold text-on-surface mt-3 truncate">{{ mas_vendidos[0].nombre }}</h3>
+        <p class="text-sm text-primary font-semibold mt-1">{{ mas_vendidos[0].unidades }} u. vendidas (${{ "%.2f"|format(mas_vendidos[0].recaudado) }})</p>
+        {% else %}
+        <h3 class="text-xl font-bold text-on-surface-variant mt-3">Sin ventas aún</h3>
+        <p class="text-sm text-on-surface-variant mt-1">Cobrá la primera venta en Caja</p>
+        {% endif %}
+    </div>
+
+    <div class="bg-white p-5 rounded-2xl shadow-card">
+        <div class="flex items-center justify-between">
+            <p class="text-sm text-on-surface-variant font-medium">Envíos en curso</p>
             <span class="w-9 h-9 rounded-full bg-primary-fixed text-primary flex items-center justify-center"><span class="material-symbols-outlined text-[20px]">two_wheeler</span></span>
         </div>
         <h3 class="text-3xl font-bold text-on-surface mt-3">{{ envios_pendientes }}</h3>
-        <a href="{{ url_for('logistica.index') }}" class="text-sm text-primary font-semibold hover:underline mt-1 inline-block">Ver envíos</a>
+        <a href="{{ url_for('logistica.index') }}" class="text-sm text-primary font-semibold hover:underline mt-1 inline-block">Ver envíos →</a>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- Últimas ventas -->
+    <div class="lg:col-span-2 bg-white rounded-2xl shadow-card overflow-hidden">
+        <div class="px-5 py-4 border-b border-outline-variant/40 flex justify-between items-center">
+            <h3 class="text-lg font-bold text-on-surface">Últimas ventas</h3>
+            <a href="{{ url_for('pos.historial') }}" class="text-primary text-sm font-semibold hover:underline">Ver todas →</a>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse text-sm">
+                <thead>
+                    <tr class="bg-surface-container-low/70 text-on-surface-variant text-xs">
+                        <th class="px-5 py-3">Ticket</th>
+                        <th class="px-5 py-3">Fecha</th>
+                        <th class="px-5 py-3">Cliente</th>
+                        <th class="px-5 py-3">Pago</th>
+                        <th class="px-5 py-3 text-right">Total</th>
+                        <th class="px-5 py-3 text-right">Ver</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for v in ultimas_ventas %}
+                    <tr class="border-b border-outline-variant/40 last:border-0">
+                        <td class="px-5 py-3.5 font-label-md font-bold text-primary">#{{ v.id }}</td>
+                        <td class="px-5 py-3.5 text-xs text-on-surface-variant font-label-sm">{{ v.fecha.strftime('%d/%m/%Y %H:%M') }}</td>
+                        <td class="px-5 py-3.5">{{ v.cliente.nombre_completo if v.cliente else 'Consumidor final' }}</td>
+                        <td class="px-5 py-3.5 text-xs">{{ v.metodo_pago }}</td>
+                        <td class="px-5 py-3.5 text-right font-label-md font-bold">${{ "%.2f"|format(v.total) }}</td>
+                        <td class="px-5 py-3.5 text-right">
+                            <a href="{{ url_for('pos.ticket', venta_id=v.id) }}" class="text-primary text-xs font-semibold hover:underline">Ticket</a>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="6" class="px-5 py-10 text-center text-on-surface-variant">Todavía no hay ventas.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
 
+    <!-- Derecha: Ranking + Atajos Cajero -->
+    <div class="space-y-6">
+        <div class="bg-white p-5 rounded-2xl shadow-card">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-bold text-on-surface">Productos más vendidos</h3>
+                <a href="{{ url_for('pos.historial') }}" class="text-xs font-semibold text-primary hover:underline">Ver ranking</a>
+            </div>
+            <div class="space-y-3">
+                {% for item in mas_vendidos %}
+                <div>
+                    <div class="flex justify-between text-sm mb-1">
+                        <span class="font-semibold truncate pr-2">{{ loop.index }}. {{ item.nombre }}</span>
+                        <span class="font-label-sm font-bold text-primary shrink-0">{{ item.unidades }} u.</span>
+                    </div>
+                    <div class="w-full h-1.5 rounded-full bg-surface-container-low overflow-hidden">
+                        <div class="h-full rounded-full {% if loop.index == 1 %}bg-secondary{% else %}bg-primary{% endif %}" style="width: {{ item.porcentaje }}%"></div>
+                    </div>
+                </div>
+                {% else %}
+                <p class="text-sm text-on-surface-variant">Sin datos de ventas.</p>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="bg-primary text-white p-5 rounded-2xl shadow-card space-y-2.5">
+            <h3 class="font-bold text-base mb-1">Atajos de Caja</h3>
+            <a href="{{ url_for('pos.venta') }}" class="w-full flex items-center justify-between bg-white text-primary p-3 rounded-xl font-semibold text-sm hover:bg-surface">
+                <span class="flex items-center gap-2"><span class="material-symbols-outlined text-secondary">point_of_sale</span> Abrir Caja / POS</span>
+                <span class="material-symbols-outlined">arrow_forward</span>
+            </a>
+            <a href="{{ url_for('pos.historial') }}" class="w-full flex items-center justify-between bg-white/10 text-white p-3 rounded-xl font-semibold text-sm hover:bg-white/20">
+                <span class="flex items-center gap-2"><span class="material-symbols-outlined">bar_chart</span> Historial y Ranking</span>
+                <span class="material-symbols-outlined">arrow_forward</span>
+            </a>
+            <a href="{{ url_for('clientes.index') }}" class="w-full flex items-center justify-between bg-white/10 text-white p-3 rounded-xl font-semibold text-sm hover:bg-white/20">
+                <span class="flex items-center gap-2"><span class="material-symbols-outlined">group</span> Clientes y Puntos</span>
+                <span class="material-symbols-outlined">arrow_forward</span>
+            </a>
+            <a href="{{ url_for('logistica.index') }}" class="w-full flex items-center justify-between bg-white/10 text-white p-3 rounded-xl font-semibold text-sm hover:bg-white/20">
+                <span class="flex items-center gap-2"><span class="material-symbols-outlined">two_wheeler</span> Envíos</span>
+                <span class="material-symbols-outlined">arrow_forward</span>
+            </a>
+        </div>
+    </div>
+</div>
+
+
+{# ========================================================================== #}
+{# 2. VISTA OPERARIO                                                          #}
+{# ========================================================================== #}
+{% elif current_user.tiene_rol('Operario') %}
+
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
     <div class="bg-white p-5 rounded-2xl shadow-card ring-1 ring-[#f59e0b]/40">
         <div class="flex items-center justify-between">
             <p class="text-sm text-[#6c4300] font-medium">Vencimientos</p>
             <span class="w-9 h-9 rounded-full bg-[#f59e0b]/20 text-[#6c4300] flex items-center justify-center"><span class="material-symbols-outlined text-[20px]">event_busy</span></span>
         </div>
         <h3 class="text-3xl font-bold text-on-surface mt-3">{{ alertas_vencimiento }} <span class="text-base font-semibold text-[#6c4300]">por vencer</span></h3>
-        <p class="text-sm mt-1"><span class="font-semibold text-error">{{ vencidos }} {{ 'vencido' if vencidos == 1 else 'vencidos' }}</span> <span class="text-on-surface-variant">· vencen en 7 días o menos</span></p>
+        <p class="text-sm mt-1"><span class="font-semibold text-error">{{ vencidos }} {{ 'vencido' if vencidos == 1 else 'vencidos' }}</span> <span class="text-on-surface-variant">· próximos 7 días</span></p>
     </div>
 
     <div class="bg-white p-5 rounded-2xl shadow-card">
         <div class="flex items-center justify-between">
-            <p class="text-sm text-on-surface-variant font-medium">Deuda con proveedores</p>
-            <span class="w-9 h-9 rounded-full {% if deuda_total > 0 %}bg-error-container text-error{% else %}bg-surface-container text-on-surface-variant{% endif %} flex items-center justify-center"><span class="material-symbols-outlined text-[20px]">receipt_long</span></span>
+            <p class="text-sm text-on-surface-variant font-medium">Stock bajo mínimo</p>
+            <span class="w-9 h-9 rounded-full bg-error-container text-error flex items-center justify-center"><span class="material-symbols-outlined text-[20px]">inventory_2</span></span>
+        </div>
+        <h3 class="text-3xl font-bold {% if bajo_stock_cantidad > 0 %}text-error{% else %}text-on-surface{% endif %} mt-3">{{ bajo_stock_cantidad }}</h3>
+        <a href="{{ url_for('stock.index', filtro='bajo_stock') }}" class="text-sm text-primary font-semibold hover:underline mt-1 inline-block">Ver productos →</a>
+    </div>
+
+    <div class="bg-white p-5 rounded-2xl shadow-card">
+        <div class="flex items-center justify-between">
+            <p class="text-sm text-on-surface-variant font-medium">Proveedores y envíos</p>
+            <span class="w-9 h-9 rounded-full bg-primary-fixed text-primary flex items-center justify-center"><span class="material-symbols-outlined text-[20px]">local_shipping</span></span>
         </div>
         <h3 class="font-label-md text-2xl font-bold {% if deuda_total > 0 %}text-error{% else %}text-on-surface{% endif %} mt-3">${{ "%.2f"|format(deuda_total) }}</h3>
-        <p class="text-sm text-on-surface-variant mt-1">{{ 'Para pagar' if deuda_total > 0 else 'Todo al día' }}</p>
+        <p class="text-sm text-on-surface-variant mt-1">Deuda actual · {{ envios_pendientes }} envíos pendientes</p>
     </div>
 </div>
 
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-    <div class="lg:col-span-2 space-y-6">
-        <!-- Productos que necesitan atención -->
-        <div class="bg-white rounded-2xl shadow-card overflow-hidden">
-            <div class="px-5 py-4 flex justify-between items-center">
-                <h3 class="text-lg font-bold text-on-surface">Productos que necesitan atención</h3>
-                {% if current_user.tiene_rol('Admin', 'Operario') %}
-                <a href="{{ url_for('stock.index') }}" class="text-primary text-sm font-semibold hover:underline">Ver inventario</a>
-                {% endif %}
-            </div>
-            <div class="overflow-x-auto">
-                <table class="w-full text-left border-collapse text-sm">
-                    <thead>
-                        <tr class="bg-surface-container-low/70 text-on-surface-variant text-xs">
-                            <th class="px-5 py-3">Producto</th>
-                            <th class="px-5 py-3">Código</th>
-                            <th class="px-5 py-3">Vencimiento</th>
-                            <th class="px-5 py-3 text-right">Góndola / Depósito</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for p in criticos %}
-                        <tr class="border-b border-outline-variant/40 last:border-0">
-                            <td class="px-5 py-3.5 flex items-center gap-3">
-                                {% if p.foto_key and url_imagen(p.foto_key) %}
-                                <img src="{{ url_imagen(p.foto_key) }}" alt="{{ p.nombre }}" class="w-10 h-10 rounded-xl object-cover"/>
-                                {% else %}
-                                <div class="w-10 h-10 bg-surface-container rounded-xl flex items-center justify-center">
-                                    <span class="material-symbols-outlined text-on-surface-variant text-lg">inventory_2</span>
-                                </div>
-                                {% endif %}
-                                <span class="font-semibold">{{ p.nombre }}</span>
-                            </td>
-                            <td class="px-5 py-3.5 font-label-md text-xs text-on-surface-variant">{{ p.sku }}</td>
-                            <td class="px-5 py-3.5">
-                                {% if p.estado_vencimiento == 'vencido' %}
-                                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-[#ef4444]/15 text-[#ba1a1a]"><span class="w-1.5 h-1.5 rounded-full bg-[#ef4444]"></span>Vencido ({{ p.fecha_vencimiento }})</span>
-                                {% elif p.estado_vencimiento == 'por_vencer' %}
-                                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-[#f59e0b]/20 text-[#6c4300]"><span class="w-1.5 h-1.5 rounded-full bg-[#f59e0b]"></span>Vence en {{ p.dias_para_vencer }} {{ 'día' if p.dias_para_vencer == 1 else 'días' }}</span>
-                                {% else %}
-                                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-[#10b981]/15 text-[#006c49]"><span class="w-1.5 h-1.5 rounded-full bg-[#10b981]"></span>{{ p.fecha_vencimiento }}</span>
-                                {% endif %}
-                            </td>
-                            <td class="px-5 py-3.5 text-right font-label-md font-bold {% if p.bajo_minimo %}text-error{% endif %}">
-                                {{ p.stock_gondola }} / {{ p.stock_deposito }}
-                            </td>
-                        </tr>
-                        {% else %}
-                        <tr><td colspan="4" class="px-5 py-10 text-center text-on-surface-variant">
-                            <span class="material-symbols-outlined text-secondary text-3xl block mb-1">check_circle</span>
-                            Todo en orden: no hay productos por vencer ni con poco stock.
-                        </td></tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+    <!-- Productos que necesitan atención -->
+    <div class="lg:col-span-2 bg-white rounded-2xl shadow-card overflow-hidden">
+        <div class="px-5 py-4 border-b border-outline-variant/40 flex justify-between items-center">
+            <h3 class="text-lg font-bold text-on-surface">Productos que necesitan atención</h3>
+            <a href="{{ url_for('stock.index') }}" class="text-primary text-sm font-semibold hover:underline">Ver inventario →</a>
         </div>
-
-        <!-- Últimas ventas -->
-        <div class="bg-white rounded-2xl shadow-card overflow-hidden">
-            <div class="px-5 py-4 flex justify-between items-center">
-                <h3 class="text-lg font-bold text-on-surface">Últimas ventas</h3>
-                {% if current_user.tiene_rol('Admin', 'Cajero') %}
-                <a href="{{ url_for('pos.venta') }}" class="text-secondary text-sm font-bold hover:underline">Nueva venta</a>
-                {% endif %}
-            </div>
-            <div class="overflow-x-auto">
-                <table class="w-full text-left border-collapse text-sm">
-                    <thead>
-                        <tr class="bg-surface-container-low/70 text-on-surface-variant text-xs">
-                            <th class="px-5 py-3">Ticket</th>
-                            <th class="px-5 py-3">Fecha</th>
-                            <th class="px-5 py-3">Cliente</th>
-                            <th class="px-5 py-3">Cajero</th>
-                            <th class="px-5 py-3 text-right">Total</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for v in ultimas_ventas %}
-                        <tr class="border-b border-outline-variant/40 last:border-0">
-                            <td class="px-5 py-3.5 font-label-md font-bold text-primary">#{{ v.id }}</td>
-                            <td class="px-5 py-3.5 text-xs text-on-surface-variant font-label-sm">{{ v.fecha.strftime('%d/%m/%Y %H:%M') }}</td>
-                            <td class="px-5 py-3.5">{{ v.cliente.nombre_completo if v.cliente else 'Consumidor final' }}</td>
-                            <td class="px-5 py-3.5 text-xs text-on-surface-variant">{{ v.usuario.nombre if v.usuario else '-' }}</td>
-                            <td class="px-5 py-3.5 text-right font-label-md font-bold">${{ "%.2f"|format(v.total) }}</td>
-                        </tr>
-                        {% else %}
-                        <tr><td colspan="5" class="px-5 py-10 text-center text-on-surface-variant">Todavía no hay ventas. Cuando cobres la primera, aparece acá.</td></tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse text-sm">
+                <thead>
+                    <tr class="bg-surface-container-low/70 text-on-surface-variant text-xs">
+                        <th class="px-5 py-3">Producto</th>
+                        <th class="px-5 py-3">Código</th>
+                        <th class="px-5 py-3">Vencimiento</th>
+                        <th class="px-5 py-3 text-right">Góndola / Depósito</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in criticos %}
+                    <tr class="border-b border-outline-variant/40 last:border-0">
+                        <td class="px-5 py-3.5 flex items-center gap-3">
+                            {% if p.foto_key and url_imagen(p.foto_key) %}
+                            <img src="{{ url_imagen(p.foto_key) }}" alt="{{ p.nombre }}" class="w-10 h-10 rounded-xl object-cover"/>
+                            {% else %}
+                            <div class="w-10 h-10 bg-surface-container rounded-xl flex items-center justify-center">
+                                <span class="material-symbols-outlined text-on-surface-variant text-lg">inventory_2</span>
+                            </div>
+                            {% endif %}
+                            <span class="font-semibold">{{ p.nombre }}</span>
+                        </td>
+                        <td class="px-5 py-3.5 font-label-md text-xs text-on-surface-variant">{{ p.sku }}</td>
+                        <td class="px-5 py-3.5">
+                            {% if p.estado_vencimiento == 'vencido' %}
+                            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-[#ef4444]/15 text-[#ba1a1a]">Vencido ({{ p.fecha_vencimiento }})</span>
+                            {% elif p.estado_vencimiento == 'por_vencer' %}
+                            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-[#f59e0b]/20 text-[#6c4300]">Vence en {{ p.dias_para_vencer }}d</span>
+                            {% else %}
+                            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-[#10b981]/15 text-[#006c49]">{{ p.fecha_vencimiento }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-5 py-3.5 text-right font-label-md font-bold {% if p.bajo_minimo %}text-error{% endif %}">
+                            {{ p.stock_gondola }} / {{ p.stock_deposito }}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="4" class="px-5 py-10 text-center text-on-surface-variant">Todo en orden: sin alertas de stock.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
     </div>
 
-    <!-- Columna derecha -->
+    <!-- Derecha: Atajos Operario + Movimientos recientes -->
     <div class="space-y-6">
-        <div class="bg-primary text-white p-6 rounded-2xl shadow-card space-y-3">
-            <h3 class="font-bold text-lg">Atajos</h3>
-            {% if current_user.tiene_rol('Admin', 'Cajero') %}
-            <a href="{{ url_for('pos.venta') }}" class="w-full flex items-center justify-between bg-white text-primary p-3.5 rounded-xl font-semibold text-sm hover:bg-surface transition-colors">
-                <span class="flex items-center gap-2"><span class="material-symbols-outlined text-secondary">point_of_sale</span> Caja</span>
+        <div class="bg-primary text-white p-5 rounded-2xl shadow-card space-y-2.5">
+            <h3 class="font-bold text-base mb-1">Atajos de Depósito</h3>
+            <a href="{{ url_for('stock.index') }}" class="w-full flex items-center justify-between bg-white text-primary p-3 rounded-xl font-semibold text-sm hover:bg-surface">
+                <span class="flex items-center gap-2"><span class="material-symbols-outlined text-secondary">inventory_2</span> Inventario y Stock</span>
                 <span class="material-symbols-outlined">arrow_forward</span>
             </a>
-            {% endif %}
-            {% if current_user.tiene_rol('Admin', 'Operario') %}
-            <a href="{{ url_for('stock.index') }}" class="w-full flex items-center justify-between bg-white/10 text-white p-3.5 rounded-xl font-semibold text-sm hover:bg-white/20 transition-colors">
-                <span class="flex items-center gap-2"><span class="material-symbols-outlined">inventory_2</span> Inventario</span>
+            <a href="{{ url_for('ia.reposicion') }}" class="w-full flex items-center justify-between bg-white/10 text-white p-3 rounded-xl font-semibold text-sm hover:bg-white/20">
+                <span class="flex items-center gap-2"><span class="material-symbols-outlined">auto_awesome</span> Reposición con IA</span>
                 <span class="material-symbols-outlined">arrow_forward</span>
             </a>
-            <a href="{{ url_for('ia.reposicion') }}" class="w-full flex items-center justify-between bg-white/10 text-white p-3.5 rounded-xl font-semibold text-sm hover:bg-white/20 transition-colors">
-                <span class="flex items-center gap-2"><span class="material-symbols-outlined">auto_awesome</span> Qué reponer</span>
+            <a href="{{ url_for('stock.mermas') }}" class="w-full flex items-center justify-between bg-white/10 text-white p-3 rounded-xl font-semibold text-sm hover:bg-white/20">
+                <span class="flex items-center gap-2"><span class="material-symbols-outlined">delete_sweep</span> Registrar Merma</span>
                 <span class="material-symbols-outlined">arrow_forward</span>
             </a>
-            {% endif %}
+            <a href="{{ url_for('proveedores.index') }}" class="w-full flex items-center justify-between bg-white/10 text-white p-3 rounded-xl font-semibold text-sm hover:bg-white/20">
+                <span class="flex items-center gap-2"><span class="material-symbols-outlined">local_shipping</span> Proveedores y Pedidos</span>
+                <span class="material-symbols-outlined">arrow_forward</span>
+            </a>
         </div>
 
         <div class="bg-white p-5 rounded-2xl shadow-card">
-            <h3 class="text-lg font-bold text-on-surface mb-3">Movimientos recientes</h3>
+            <div class="flex items-center justify-between mb-3">
+                <h3 class="text-lg font-bold text-on-surface">Movimientos recientes</h3>
+                <a href="{{ url_for('stock.movimientos') }}" class="text-xs font-semibold text-primary hover:underline">Ver todos</a>
+            </div>
             <div class="space-y-3 text-sm">
                 {% for m in ultimos_movimientos %}
                 <div class="flex items-start justify-between gap-2 pb-3 border-b border-outline-variant/40 last:border-0 last:pb-0">
                     <div>
                         <p class="font-semibold text-on-surface">{{ m.producto.nombre if m.producto else 'Producto' }} <span class="text-on-surface-variant font-normal">({{ m.cantidad }} u.)</span></p>
-                        <p class="text-xs text-on-surface-variant mt-0.5">De {{ m.origen }} a {{ m.destino }}</p>
+                        <p class="text-xs text-on-surface-variant mt-0.5">{{ m.origen }} → {{ m.destino }}</p>
                     </div>
                     <span class="text-xs px-2.5 py-1 rounded-full bg-surface-container text-primary font-semibold whitespace-nowrap">{{ m.tipo }}</span>
                 </div>
@@ -198,6 +293,139 @@
         </div>
     </div>
 </div>
+
+
+{# ========================================================================== #}
+{# 3. VISTA ADMIN (Descomprimida: Accesos rápidos + Mini-Reportes)            #}
+{# ========================================================================== #}
+{% else %}
+
+<!-- Barra de Accesos Rápidos en 1 clic -->
+<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
+    <a href="{{ url_for('pos.venta') }}" class="bg-secondary text-white p-4 rounded-2xl shadow-card hover:bg-[#10b981] transition-colors flex flex-col gap-2">
+        <span class="material-symbols-outlined text-2xl">point_of_sale</span>
+        <span class="font-bold text-sm">Abrir Caja</span>
+    </a>
+    <a href="{{ url_for('pos.historial') }}" class="bg-white p-4 rounded-2xl shadow-card hover:ring-2 hover:ring-primary transition-all flex flex-col gap-2">
+        <span class="material-symbols-outlined text-2xl text-primary">bar_chart</span>
+        <span class="font-bold text-sm text-on-surface">Reporte Ventas</span>
+    </a>
+    <a href="{{ url_for('stock.index') }}" class="bg-white p-4 rounded-2xl shadow-card hover:ring-2 hover:ring-primary transition-all flex flex-col gap-2">
+        <span class="material-symbols-outlined text-2xl text-primary">inventory_2</span>
+        <span class="font-bold text-sm text-on-surface">Inventario</span>
+    </a>
+    <a href="{{ url_for('ia.reposicion') }}" class="bg-white p-4 rounded-2xl shadow-card hover:ring-2 hover:ring-primary transition-all flex flex-col gap-2">
+        <span class="material-symbols-outlined text-2xl text-primary">auto_awesome</span>
+        <span class="font-bold text-sm text-on-surface">Reposición IA</span>
+    </a>
+    <a href="{{ url_for('proveedores.index') }}" class="bg-white p-4 rounded-2xl shadow-card hover:ring-2 hover:ring-primary transition-all flex flex-col gap-2">
+        <span class="material-symbols-outlined text-2xl text-primary">local_shipping</span>
+        <span class="font-bold text-sm text-on-surface">Proveedores</span>
+    </a>
+    <a href="{{ url_for('auth.gestionar_usuarios') }}" class="bg-white p-4 rounded-2xl shadow-card hover:ring-2 hover:ring-primary transition-all flex flex-col gap-2">
+        <span class="material-symbols-outlined text-2xl text-primary">manage_accounts</span>
+        <span class="font-bold text-sm text-on-surface">Equipo y Roles</span>
+    </a>
+</div>
+
+<!-- 4 KPIs ejecutivos -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+    <div class="bg-white p-5 rounded-2xl shadow-card">
+        <p class="text-xs font-semibold text-on-surface-variant uppercase">Ventas totales</p>
+        <h3 class="font-label-md text-2xl font-bold text-on-surface mt-2">${{ "%.2f"|format(ventas_totales) }}</h3>
+        <p class="text-xs text-secondary font-semibold mt-1">Hoy: ${{ "%.2f"|format(ventas_hoy_total) }} ({{ ventas_hoy_cantidad }})</p>
+    </div>
+
+    <div class="bg-white p-5 rounded-2xl shadow-card ring-1 ring-[#f59e0b]/40">
+        <p class="text-xs font-semibold text-[#6c4300] uppercase">Alertas de stock</p>
+        <h3 class="text-2xl font-bold text-on-surface mt-2">{{ alertas_vencimiento }} por vencer · <span class="text-error">{{ vencidos }} venc.</span></h3>
+        <p class="text-xs text-on-surface-variant mt-1">{{ bajo_stock_cantidad }} productos bajo el mínimo</p>
+    </div>
+
+    <div class="bg-white p-5 rounded-2xl shadow-card">
+        <p class="text-xs font-semibold text-on-surface-variant uppercase">Deuda proveedores</p>
+        <h3 class="font-label-md text-2xl font-bold {% if deuda_total > 0 %}text-error{% else %}text-on-surface{% endif %} mt-2">${{ "%.2f"|format(deuda_total) }}</h3>
+        <a href="{{ url_for('proveedores.index') }}" class="text-xs text-primary font-semibold hover:underline mt-1 inline-block">Gestionar cuentas →</a>
+    </div>
+
+    <div class="bg-white p-5 rounded-2xl shadow-card">
+        <p class="text-xs font-semibold text-on-surface-variant uppercase">Envíos pendientes</p>
+        <h3 class="text-2xl font-bold text-on-surface mt-2">{{ envios_pendientes }}</h3>
+        <a href="{{ url_for('logistica.index') }}" class="text-xs text-primary font-semibold hover:underline mt-1 inline-block">Ir a logística →</a>
+    </div>
+</div>
+
+<!-- 2 Tarjetas de Reporte compactas -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <!-- Reporte Comercial -->
+    <div class="bg-white p-5 rounded-2xl shadow-card space-y-5">
+        <div class="flex justify-between items-center">
+            <div>
+                <h3 class="text-lg font-bold text-on-surface">Reporte comercial (7 días)</h3>
+                <p class="text-xs text-on-surface-variant">Facturación diaria y top productos más vendidos</p>
+            </div>
+            <a href="{{ url_for('pos.historial') }}" class="text-sm text-primary font-semibold hover:underline">Ver detalle →</a>
+        </div>
+
+        <!-- Mini gráfico últimos 7 días -->
+        <div class="h-28 flex items-end gap-2 pt-4 px-2 border-b border-outline-variant/60">
+            {% for d in grafico %}
+            <div class="flex-1 flex flex-col items-center gap-1">
+                <div class="w-full bg-primary-fixed hover:bg-primary rounded-t transition-colors" style="height: {{ [d.alto, 6]|max }}%" title="${{ '%.2f'|format(d.total) }}"></div>
+                <span class="text-[10px] font-label-sm text-on-surface-variant">{{ d.dia }}</span>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="space-y-2.5">
+            <p class="text-xs font-bold uppercase text-on-surface-variant">Top más vendidos</p>
+            {% for item in mas_vendidos[:4] %}
+            <div class="flex items-center justify-between text-sm">
+                <span class="font-semibold truncate pr-2">{{ loop.index }}. {{ item.nombre }}</span>
+                <span class="font-label-sm text-xs text-primary font-bold">{{ item.unidades }} u. · ${{ "%.2f"|format(item.recaudado) }}</span>
+            </div>
+            {% else %}
+            <p class="text-xs text-on-surface-variant">Sin ventas registradas.</p>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Reporte Operativo / Alertas -->
+    <div class="bg-white p-5 rounded-2xl shadow-card space-y-4">
+        <div class="flex justify-between items-center">
+            <div>
+                <h3 class="text-lg font-bold text-on-surface">Alertas operativas de stock</h3>
+                <p class="text-xs text-on-surface-variant">Productos críticos por vencimiento o bajo mínimo</p>
+            </div>
+            <a href="{{ url_for('stock.index') }}" class="text-sm text-primary font-semibold hover:underline">Ir a stock →</a>
+        </div>
+
+        <div class="space-y-2.5">
+            {% for p in criticos[:5] %}
+            <div class="flex items-center justify-between p-3 rounded-xl bg-surface-container-low/70 text-sm">
+                <div class="min-w-0 pr-2">
+                    <p class="font-semibold truncate">{{ p.nombre }}</p>
+                    <p class="text-xs text-on-surface-variant">Góndola: {{ p.stock_gondola }} u. · Depósito: {{ p.stock_deposito }} u.</p>
+                </div>
+                {% if p.estado_vencimiento == 'vencido' %}
+                <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-[#ef4444]/15 text-[#ba1a1a] shrink-0">Vencido</span>
+                {% elif p.estado_vencimiento == 'por_vencer' %}
+                <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-[#f59e0b]/20 text-[#6c4300] shrink-0">Vence {{ p.dias_para_vencer }}d</span>
+                {% else %}
+                <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-error-container text-error shrink-0">Poco stock</span>
+                {% endif %}
+            </div>
+            {% else %}
+            <p class="text-sm text-on-surface-variant py-6 text-center">No hay alertas críticas hoy.</p>
+            {% endfor %}
+        </div>
+
+        <a href="{{ url_for('ia.reposicion') }}" class="block w-full text-center bg-primary-fixed text-primary py-2.5 rounded-xl text-xs font-bold hover:bg-primary hover:text-white transition-colors">
+            Abrir recomendaciones de reposición con IA →
+        </a>
+    </div>
+</div>
+{% endif %}
 {% endblock %}
 
 {% block extra_scripts %}

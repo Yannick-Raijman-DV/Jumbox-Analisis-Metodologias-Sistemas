@@ -10,49 +10,18 @@ Patrón singleton + lazy loading:
     - `transformers` / `torch` se importan dentro de la carga, así en Render
       (LLM_ENABLED=false) ni siquiera se importan.
 
-Decisión de diseño: las cantidades las calcula Python
-(services/inventario.calcular_candidatos_reposicion). El modelo recibe los
-hechos ya calculados en oraciones simples (con un ejemplo one-shot) y redacta
-un dictamen ejecutivo breve en español, evitando que un modelo de 0.5B alucine
-números o copie fragmentos de una tabla.
-
-Contexto del negocio (no hay fine-tuning: todo entra por el prompt en cada consulta):
-    - Prompt de sistema: reglas fijas de JUMBOX (flujo de stock, vencidos,
-      umbral de promoción tomado de DIAS_ALERTA_VENCIMIENTO, deuda con proveedores).
-    - Viñeta de cada pedido: monto estimado y deuda actual con ese proveedor,
-      también calculados en Python. Van dentro de la misma viñeta y no en una
-      sección aparte porque, probado con Qwen 0.5B, la sección separada lo hacía
-      mezclar productos entre líneas.
+Decisión de diseño: las cantidades y montos los calcula Python
+(services/inventario.calcular_candidatos_reposicion). El modelo recibe las
+viñetas exactas sin ejemplos de productos ficticios y redacta **una única oración
+corta y precisa** (máximo 70 tokens). Un validador post-generación verifica que no
+haya inventado números ni productos ajenos; si detecta desvíos, usa la oración
+exacta derivada de los datos reales.
 """
+import re
 import threading
 import time
 
 from flask import current_app
-
-
-def sistema_prompt(dias_alerta: int) -> str:
-    return (
-        "Sos el encargado de compras e inventario del supermercado JUMBOX. "
-        "Reglas del negocio: la mercadería entra del proveedor al Depósito Central y de ahí se traslada a la góndola; "
-        "un producto vencido no se puede vender, se retira y se registra como merma; "
-        f"si vence en {dias_alerta} días o menos no se repone, se promociona en caja; "
-        "cada pedido a un proveedor se suma a la deuda que tenemos con él. "
-        "A partir de las alertas del día, redactá un párrafo breve en español rioplatense (2 a 3 oraciones) "
-        "indicando qué acción urgente hacer primero y qué pedidos emitir a cada proveedor. "
-        "Usá exactamente los productos, cantidades y montos informados."
-    )
-
-
-EJEMPLO_USER = (
-    "Alertas del día:\n"
-    "• URGENTE — Leche 1L está vencido: retirar 6 u. y registrar merma.\n"
-    "• PEDIDO A LA SERENÍSIMA — Solicitar 10 u. de Yogur (unos $4,500.00; deuda actual con el proveedor: $12,000.00)."
-)
-EJEMPLO_ASSISTANT = (
-    "Primero hay que retirar de la góndola las 6 unidades de Leche 1L vencida y cargarlas como merma para que no pasen por caja. "
-    "Después, conviene emitir hoy el pedido a La Serenísima por 10 unidades de Yogur (unos $4,500.00), "
-    "teniendo en cuenta que la deuda con ese proveedor ya es de $12,000.00."
-)
 
 FRASES_ECO_PROHIBIDAS = (
     "primero lo urgente",
@@ -60,7 +29,19 @@ FRASES_ECO_PROHIBIDAS = (
     "para cada producto usá",
     "si hay productos para promocionar",
     "terminá con una línea",
+    "reglas del negocio",
+    "un producto vencido no se puede",
 )
+
+
+def sistema_prompt(dias_alerta: int) -> str:
+    return (
+        "Sos el asistente de inventario de JUMBOX. "
+        f"Reglas del negocio: productos vencidos se retiran como merma; si vence en {dias_alerta} días o menos se promociona; "
+        "los pedidos ingresan al depósito y suman deuda al proveedor. "
+        "Respondé en español rioplatense con UNA SOLA ORACIÓN CORTA (máximo 25 palabras) indicando qué hacer primero, "
+        "copiando exactamente el nombre del producto y la cantidad informada. No inventes otros productos ni números."
+    )
 
 
 class AsistenteReposicion:
@@ -99,13 +80,11 @@ class AsistenteReposicion:
     def redactar(self, alertas: str, dias_alerta: int, max_tokens: int) -> str:
         mensajes = [
             {"role": "system", "content": sistema_prompt(dias_alerta)},
-            {"role": "user", "content": EJEMPLO_USER},
-            {"role": "assistant", "content": EJEMPLO_ASSISTANT},
-            {"role": "user", "content": f"Alertas del día:\n{alertas}"},
+            {"role": "user", "content": f"Situación actual (priorizada):\n{alertas}\n\nEscribí UNA sola oración corta con la acción más urgente:"},
         ]
         salida = self.generar(
             mensajes,
-            max_new_tokens=min(max_tokens, 160),
+            max_new_tokens=min(max_tokens, 70),
             do_sample=False,
             repetition_penalty=1.15,
         )
@@ -114,16 +93,43 @@ class AsistenteReposicion:
 
 
 def _limpiar_salida_llm(texto: str) -> str:
-    """Quita posibles ecos del prompt o barras '|' si el modelo 0.5B intenta copiarlas."""
+    """Quita saltos extra, ecos del prompt o barras '|' si el modelo 0.5B intenta copiarlas."""
     lineas_limpias = []
     for linea in texto.splitlines():
-        limpia = linea.strip()
+        limpia = linea.strip(" •-*")
         if not limpia or "|" in limpia:
             continue
         if any(frase in limpia.lower() for frase in FRASES_ECO_PROHIBIDAS):
             continue
         lineas_limpias.append(limpia)
-    return " ".join(lineas_limpias).strip()
+    unido = " ".join(lineas_limpias).strip()
+    # Quedarse como máximo con las dos primeras oraciones para mantener precisión y brevedad
+    oraciones = re.split(r"(?<=[.!?])\s+", unido)
+    return " ".join(oraciones[:2]).strip()
+
+
+def _es_respuesta_precisa(texto: str, candidatos: list[dict], contexto: str) -> bool:
+    """Verifica que la respuesta del modelo chico no haya inventado números o ignorado los productos reales."""
+    if not texto or len(texto) > 260:
+        return False
+    texto_low = texto.lower()
+    # Debe mencionar al menos el producto más urgente
+    if candidatos and candidatos[0]["nombre"].lower() not in texto_low:
+        return False
+    # Todo número mencionado por el modelo debe aparecer literalmente en los datos de entrada (evita alucinaciones)
+    numeros_contexto = set(re.findall(r"\d+(?:[.,]\d+)?", contexto))
+    numeros_salida = re.findall(r"\d+(?:[.,]\d+)?", texto)
+    for num in numeros_salida:
+        if num not in numeros_contexto:
+            return False
+    return True
+
+
+def _dictamen_exacto(candidatos: list[dict]) -> str:
+    urgente = candidatos[0]
+    accion = urgente["accion"].lower()
+    cant = f" ({urgente['cantidad_sugerida']} u.)" if urgente.get("cantidad_sugerida") else ""
+    return f"Prioridad inmediata: {accion} «{urgente['nombre']}»{cant} ({urgente['motivo']})"
 
 
 def puntos_operativos(candidatos: list[dict]) -> list[str]:
@@ -190,8 +196,8 @@ def generar_recomendacion(candidatos: list[dict]) -> dict:
         inicio = time.time()
         asistente = AsistenteReposicion.obtener(cfg["LLM_MODEL"])
         dictamen = asistente.redactar(vinetas_str, cfg["DIAS_ALERTA_VENCIMIENTO"], cfg["LLM_MAX_TOKENS"])
-        if not dictamen:
-            dictamen = f"La prioridad inmediata es atender «{candidatos[0]['nombre']}» ({candidatos[0]['accion'].lower()})."
+        if not _es_respuesta_precisa(dictamen, candidatos, vinetas_str):
+            dictamen = _dictamen_exacto(candidatos)
         resultado["texto"] = f"{vinetas_str}\n\nResumen IA ({cfg['LLM_MODEL']}):\n{dictamen}"
         resultado["fuente"] = "llm"
         resultado["segundos"] = round(time.time() - inicio, 1)

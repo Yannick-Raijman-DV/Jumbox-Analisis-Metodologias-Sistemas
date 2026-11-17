@@ -3,7 +3,7 @@
 > **Materia:** Análisis y Metodología de Sistemas (Escuela DaVinci — 4° Cuatrimestre)  
 > **Cátedra:** Prof. Gamaliel Quiroz  
 > **Arquitectura:** Flask Modular (`create_app` + 8 Blueprints) + SQLite/SQLAlchemy + **AWS S3** + **LLM Local (Qwen2.5-0.5B-Instruct)** + **Google OAuth 2.0**  
-> **APIs externas (REST con `requests`):** **Geoapify** (mapa, distancia y costo en Envíos) + **Mercado Pago Checkout Pro** vía Orders API (cobro del ticket en Caja, con credenciales de prueba)
+> **APIs externas (REST con `requests`):** **Geoapify** (mapa, distancia y costo de envío sumado en POS) + **Mercado Pago Checkout Pro** vía Orders API (cobro del ticket en Caja) + **DolarAPI** (conversión a USD bajo demanda en POS, sin key)
 
 ---
 
@@ -38,7 +38,7 @@ Todas las cuentas migradas del sistema Java/MySQL utilizan la contraseña **`123
 |---|---|---|---|---|
 | `administrador` | `admin@gmail.com` | `1234` | **Admin** | Acceso total + gestión de usuarios (`/usuarios`) |
 | `operario` | `operario@gmail.com` | `1234` | **Operario** | Stock, mermas, traslados, proveedores, envíos e IA (`/ia/reposicion`) |
-| `cajero` | `cajero@gmail.com` | `1234` | **Cajero** | Punto de Venta POS (`/pos`), tickets, clientes y envíos |
+| `cajero` | `cajero@gmail.com` | `1234` | **Cajero** | Punto de Venta POS (`/pos`), historial y ranking (`/pos/ventas`), tickets, clientes y envíos |
 
 Si un usuario nuevo inicia sesión con **Google OAuth**, el sistema lo redirige a `/auth/elegir-rol` para que seleccione su puesto (**Operario** o **Cajero**).
 
@@ -56,11 +56,11 @@ flask --app run seed --reset
 # Verificar el bucket de AWS S3 de punta a punta (sube, URL prefirmada, privado, borra)
 flask --app run s3-check
 
-# Ejecutar la suite de tests automatizados (migración, auth, POS/stock, S3, LLM singleton, Geoapify y Mercado Pago)
+# Ejecutar la suite de tests automatizados (migración, auth, POS/stock, S3, LLM singleton, Geoapify, Mercado Pago y DolarAPI)
 pytest -v
 ```
 
-La suite tiene 77 tests: `tests/test_jumbox.py` (7), `tests/test_geoapify.py` (41) y `tests/test_mercadopago.py` (29). Los de Geoapify y Mercado Pago **nunca salen a internet**: `requests` está siempre mockeado, así que corren sin keys.
+La suite tiene 100 tests: `tests/test_jumbox.py` (10), `tests/test_apis_dolar_off.py` (14), `tests/test_geoapify.py` (41), `tests/test_mercadopago.py` (30) y `tests/test_s3_check.py` (5). Las pruebas de APIs externas y S3 **nunca salen a internet**: `requests` y `boto3` están siempre mockeados, así que corren sin keys.
 
 ---
 
@@ -75,7 +75,7 @@ La suite tiene 77 tests: `tests/test_jumbox.py` (7), `tests/test_geoapify.py` (4
    - `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_DEFAULT_REGION`, `S3_BUCKET`
    - `GEOAPIFY_API_KEY` (key gratis de <https://myprojects.geoapify.com>)
    - `MP_ACCESS_TOKEN` = Access Token **de PRUEBA** de Mercado Pago (empieza con `APP_USR-`; nunca el de producción)
-   - Opcionales, con valores por defecto: `SUCURSAL_NOMBRE`, `SUCURSAL_LAT`, `SUCURSAL_LON` (punto de partida de los envíos) y `ENVIO_COSTO_BASE`, `ENVIO_COSTO_KM` (costo = base + km × $/km)
+   - Opcionales, con valores por defecto: `SUCURSAL_NOMBRE`, `SUCURSAL_LAT`, `SUCURSAL_LON` (punto de partida de los envíos), `ENVIO_COSTO_BASE`, `ENVIO_COSTO_KM` (costo = base + km × $/km), `DOLAR_TIPO` y `DOLAR_CACHE_SEGUNDOS`
    - `LLM_ENABLED` = `false` (en el plan Free de 512 MB de RAM se activa automáticamente el motor determinístico de reglas; en ejecución local usar `LLM_ENABLED=true`).
 5. Los valores van **sin comillas**. Después de cambiarlos: **Save, rebuild, and deploy**.
 

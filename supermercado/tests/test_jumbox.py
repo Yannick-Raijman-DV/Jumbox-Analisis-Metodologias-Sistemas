@@ -157,7 +157,7 @@ def test_flujo_venta_traslado_merma_y_proveedor(app):
     assert lays.stock_gondola == 3
     assert lays.stock_deposito == 0
 
-    # 2. Vender 2 unidades con envío a domicilio
+    # 2. Vender 2 unidades con envío a domicilio (el envío se suma al total de la venta)
     venta = inventario.registrar_venta(
         usuario=admin,
         items=[{"producto_id": lays.id, "cantidad": 2}],
@@ -165,9 +165,12 @@ def test_flujo_venta_traslado_merma_y_proveedor(app):
         metodo_pago="Mercado Pago",
         envio={"direccion": "Av. Siempre Viva 742", "telefono": "11-2222-3333"},
     )
-    assert venta.total == 20.0
-    assert lays.stock_gondola == 1
+    costo_esperado = app.config["ENVIO_COSTO_BASE"]
+    assert venta.subtotal_productos == 20.0
     assert venta.envio is not None
+    assert venta.envio.costo == costo_esperado
+    assert venta.total == 20.0 + costo_esperado
+    assert lays.stock_gondola == 1
     assert venta.envio.estado == "En preparación"
 
     # 3. Intentar vender un producto vencido (CocaCola #1 tiene fecha 2026-06-26 < hoy 2026-10-31)
@@ -283,3 +286,69 @@ def test_llm_pedido_con_monto_y_deuda():
         "• PEDIDO A ARCOR — Solicitar 10 u. de Bon o Bon, 2 u. de Rocklets "
         "(unos $550.00; deuda actual con el proveedor: $1,200.00)."
     ]
+
+
+def test_llm_validador_rechaza_alucinaciones():
+    cands = [{"accion": "Dar de baja", "nombre": "CocaCola", "cantidad_sugerida": 4, "motivo": "Vencido"}]
+    ctx = "• URGENTE — CocaCola está vencido: retirar 4 u. y registrar merma."
+    # Respuesta válida
+    assert llm._es_respuesta_precisa("Retirar las 4 unidades de CocaCola vencida hoy.", cands, ctx) is True
+    # Inventó otro número (99) -> rechazada
+    assert llm._es_respuesta_precisa("Retirar las 99 unidades de CocaCola vencida hoy.", cands, ctx) is False
+    # Inventó otro producto (Leche) -> rechazada
+    assert llm._es_respuesta_precisa("Retirar Leche 1L hoy.", cands, ctx) is False
+
+
+def test_stock_filtro_categoria_y_modal_alta(client):
+    login_como(client, "operario", "1234")
+    # En inventario hay selector de filtro, no input de alta accidental
+    html_stock = client.get("/stock/").get_data(as_text=True)
+    assert 'id="filtro-categoria"' in html_stock
+    assert "Agregar categoría" not in html_stock
+
+    # El alta de categoría está disponible desde el modal de Nuevo Producto
+    html_form = client.get("/stock/productos/nuevo").get_data(as_text=True)
+    assert "+ Nueva categoría" in html_form
+    assert 'id="modal-categoria"' in html_form
+
+    r_cat = client.post("/stock/categorias/nueva", data={"nombre_categoria": "Lácteos"}, follow_redirects=True)
+    assert r_cat.status_code == 200
+    assert "Lácteos" in r_cat.get_data(as_text=True)
+
+
+def test_vistas_por_rol_y_historial_ventas(client):
+    # 1. Cajero: inicio enfocado en caja, ventas y ranking (sin alertas de stock ni deuda a proveedores)
+    login_como(client, "cajero", "1234")
+    html_cajero = client.get("/").get_data(as_text=True)
+    assert "Panel de Caja" in html_cajero
+    assert "Productos más vendidos" in html_cajero
+    assert "Últimas ventas" in html_cajero
+    assert "Deuda con proveedores" not in html_cajero
+    assert "Productos que necesitan atención" not in html_cajero
+
+    r_ventas = client.get("/pos/ventas")
+    assert r_ventas.status_code == 200
+    html_ventas = r_ventas.get_data(as_text=True)
+    assert "Productos más vendidos" in html_ventas
+    assert "Historial de tickets" in html_ventas
+    assert client.get("/pos/ventas?metodo=Efectivo").status_code == 200
+    client.get("/logout")
+
+    # 2. Operario: inicio enfocado en depósito/stock/proveedores (sin últimas ventas ni acceso a /pos/ventas)
+    login_como(client, "operario", "1234")
+    html_operario = client.get("/").get_data(as_text=True)
+    assert "Panel de Depósito y Góndola" in html_operario
+    assert "Productos que necesitan atención" in html_operario
+    assert "Movimientos recientes" in html_operario
+    assert "Últimas ventas" not in html_operario
+    assert client.get("/pos/ventas").status_code == 403
+    client.get("/logout")
+
+    # 3. Admin: panel ejecutivo descomprimido + acceso completo a /pos/ventas
+    login_como(client, "administrador", "1234")
+    html_admin = client.get("/").get_data(as_text=True)
+    assert "Panel Ejecutivo" in html_admin
+    assert "Reporte comercial (7 días)" in html_admin
+    assert "Alertas operativas de stock" in html_admin
+    assert client.get("/pos/ventas").status_code == 200
+

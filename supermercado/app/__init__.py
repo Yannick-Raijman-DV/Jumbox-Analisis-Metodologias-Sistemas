@@ -3,7 +3,7 @@ from pathlib import Path
 
 import click
 from flask import Flask, flash, redirect, render_template, request, url_for
-from sqlalchemy import event
+from sqlalchemy import event, inspect, text
 from sqlalchemy.engine import Engine
 from werkzeug.middleware.proxy_fix import ProxyFix
 
@@ -11,7 +11,7 @@ from config import Config
 
 from .extensions import bcrypt, db, login_manager, oauth
 from .models import Envio, Usuario
-from .seed import cargar_seed, seed_si_vacia
+from .seed import cargar_seed, seed_si_vacia, sincronizar_fotos_s3
 from .services import llm, s3
 
 
@@ -123,10 +123,17 @@ def create_app(config_class=Config) -> Flask:
     from .cli import registrar_comandos
     registrar_comandos(app)
 
-    # Crear tablas y sembrar si está vacía
+    # Crear tablas, asegurar columnas nuevas en bases existentes y sembrar si está vacía
     with app.app_context():
         db.create_all()
+        cols_envio = {c["name"] for c in inspect(db.engine).get_columns("envios")}
+        if "costo" not in cols_envio:
+            db.session.execute(text("ALTER TABLE envios ADD COLUMN costo FLOAT NOT NULL DEFAULT 0.0"))
+        if "distancia_km" not in cols_envio:
+            db.session.execute(text("ALTER TABLE envios ADD COLUMN distancia_km FLOAT"))
+        db.session.commit()
         if app.config.get("SEED_AUTOMATICO", True):
             seed_si_vacia()
+            sincronizar_fotos_s3()
 
     return app

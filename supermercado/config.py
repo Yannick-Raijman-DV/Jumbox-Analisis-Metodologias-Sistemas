@@ -1,11 +1,45 @@
 """Configuración de la aplicación. Todo lo sensible se lee del entorno (.env)."""
 import os
+import ssl
+import sys
 from pathlib import Path
 
 from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent
 load_dotenv(BASE_DIR / ".env")
+
+
+def _configurar_ca_windows() -> None:
+    """Combina certifi con el almacén de certificados de Windows para requests y boto3."""
+    if sys.platform != "win32":
+        return
+    if os.environ.get("REQUESTS_CA_BUNDLE") and os.environ.get("AWS_CA_BUNDLE"):
+        return
+    try:
+        import certifi
+
+        bloques = [Path(certifi.where()).read_text(encoding="ascii", errors="ignore")]
+        vistos: set[str] = set()
+        for almacen in ("ROOT", "CA"):
+            for der, codificacion, _ in ssl.enum_certificates(almacen):
+                if codificacion != "x509_asn":
+                    continue
+                pem = ssl.DER_cert_to_PEM_cert(der)
+                if pem not in vistos:
+                    vistos.add(pem)
+                    bloques.append(pem)
+
+        bundle = BASE_DIR / "instance" / "ca_bundle_win.pem"
+        bundle.parent.mkdir(parents=True, exist_ok=True)
+        bundle.write_text("\n".join(bloques), encoding="ascii")
+        os.environ.setdefault("REQUESTS_CA_BUNDLE", str(bundle))
+        os.environ.setdefault("AWS_CA_BUNDLE", str(bundle))
+    except Exception:
+        pass
+
+
+_configurar_ca_windows()
 
 
 def _bool(nombre: str, defecto: bool = False) -> bool:
@@ -55,9 +89,6 @@ class Config:
     # DolarAPI (API externa pública, sin key): cotización del dólar al momento de la venta
     DOLAR_TIPO = os.environ.get("DOLAR_TIPO") or "oficial"  # oficial | blue | tarjeta | mep ...
     DOLAR_CACHE_SEGUNDOS = int(os.environ.get("DOLAR_CACHE_SEGUNDOS") or 300)
-
-    # Open Food Facts (API externa pública, sin key): foto y marca/proveedor por código de barras
-    OFF_USER_AGENT = os.environ.get("OFF_USER_AGENT") or "Jumbox/1.0 (proyecto academico Da Vinci)"
 
     # Reglas de negocio
     DIAS_ALERTA_VENCIMIENTO = 7

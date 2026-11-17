@@ -21,8 +21,9 @@ El sistema **JUMBOX** fue migrado desde una aplicación de escritorio monolític
   3. **Inteligencia Artificial Local:** Modelo de lenguaje instructivo **`Qwen/Qwen2.5-0.5B-Instruct`** ejecutado localmente con Hugging Face `transformers` y `PyTorch CPU`, inicializado bajo patrón **Singleton + Lazy Loading** para asistir en las decisiones de reposición de stock.
   4. **API externa de mapas — Geoapify:** consumida con `requests` desde `app/services/geo.py` para el módulo de Envíos. Usa tres endpoints REST con API key (`GEOAPIFY_API_KEY`): *Geocoding* (dirección → lat/lon), *Routing* (distancia y tiempo en auto desde la sucursal) y *Static Maps* (PNG con dos marcadores, servido a través de un proxy de Flask para que la key nunca llegue al navegador). Con la distancia se calcula un costo estimado de envío (`ENVIO_COSTO_BASE + km × ENVIO_COSTO_KM`).
   5. **API externa de pagos — Mercado Pago (Checkout Pro vía Orders API):** consumida con `requests` desde `app/services/mercadopago.py` para cobrar el ticket de las ventas con medio de pago "Mercado Pago". Crea la *order* (`POST /v1/orders`), redirige al checkout de `mercadopago.com.ar` y confirma el estado consultando la API (`GET /v1/orders/{id}`). Usa un Access Token **de prueba** (`MP_ACCESS_TOKEN`, `Authorization: Bearer`), por lo que no se mueve dinero real. Los cobros se guardan en la tabla nueva `pagos_mercadopago`.
+  6. **API externa pública — DolarAPI (sin key):** consumida con `requests` desde `app/services/dolar.py` (`GET /v1/dolares/{tipo}`). En el POS el cobro es en pesos por defecto y, solo si el cajero tilda la opción de conversión a USD, consulta el dólar vigente, muestra el equivalente y congela el cambio en la tabla `ventas_cotizacion`.
 
-  La guía para obtener las credenciales y probar ambas integraciones está en [`docs/GUIA_APIS_EXTERNAS.md`](GUIA_APIS_EXTERNAS.md).
+  Las guías para configurar credenciales y probar las integraciones están en [`docs/GUIA_APIS_EXTERNAS.md`](GUIA_APIS_EXTERNAS.md) y [`docs/GUIA_BUCKET_S3.md`](GUIA_BUCKET_S3.md) (verificación de punta a punta con `flask --app run s3-check`).
 
 ---
 
@@ -30,7 +31,7 @@ El sistema **JUMBOX** fue migrado desde una aplicación de escritorio monolític
 
 Para cumplir las buenas prácticas de escalabilidad y mantenimiento, se eliminó el acoplamiento de rutas en un solo archivo y se organizó el proyecto bajo paquetes por dominio de negocio (**Blueprints**) con un flujo de importaciones estrictamente unidireccional:
 
-$$\text{routes (Blueprints)} \longrightarrow \text{services (S3 / LLM / Inventario / Geo / Mercado Pago)} \longrightarrow \text{models (SQLAlchemy)} \longrightarrow \text{extensions}$$
+$$\text{routes (Blueprints)} \longrightarrow \text{services (S3 / LLM / Inventario / Geo / Mercado Pago / Dolar)} \longrightarrow \text{models (SQLAlchemy)} \longrightarrow \text{extensions}$$
 
 ```text
 supermercado/
@@ -44,34 +45,38 @@ supermercado/
 │   ├── seed.json               # Datos limpios listos para sembrar en SQLite
 │   └── fotos/                  # Imágenes WebP/JPG extraídas de los LONGBLOB de MySQL
 ├── tests/
-│   ├── test_jumbox.py          # Suite automatizada con Pytest (migración, auth, POS, S3 y LLM)
+│   ├── test_jumbox.py          # Suite automatizada con Pytest (migración, auth, vistas por rol, POS, S3 y LLM)
+│   ├── test_apis_dolar_off.py  # DolarAPI bajo demanda en POS: cache y resiliencia (red mockeada)
 │   ├── test_geoapify.py        # Geoapify: geocoding, ruta, costo, cache, proxy del mapa y errores (red mockeada)
-│   └── test_mercadopago.py     # Mercado Pago: crear/consultar order, retorno, verificar, doble cobro y errores (red mockeada)
+│   ├── test_mercadopago.py     # Mercado Pago: crear/consultar order, retorno, verificar, doble cobro y errores (red mockeada)
+│   └── test_s3_check.py        # Comando CLI s3-check: PutObject, URL prefirmada, 403 privado y DeleteObject (mockeado)
 └── app/
-    ├── __init__.py             # Application Factory create_app() y registro de Blueprints
+    ├── __init__.py             # Application Factory create_app() y registro de Blueprints + CLI
     ├── extensions.py           # Instancias desacopladas: db, login_manager, bcrypt, oauth
-    ├── models.py               # 17 modelos SQLAlchemy (tablas migradas + envios, pagos y pagos_mercadopago)
+    ├── models.py               # 18 modelos SQLAlchemy (14 migrados + envios, pagos_proveedor, pagos_mercadopago y ventas_cotizacion)
     ├── decorators.py           # Control de acceso por rol: @rol_requerido(...)
     ├── seed.py                 # Sembrado automático idempotente y subida inicial a S3
+    ├── cli.py                  # Comandos CLI (`flask --app run s3-check`)
     ├── services/
     │   ├── s3.py               # Cliente Boto3 singleton, subida y URLs prefirmadas
-    │   ├── llm.py              # Inferencia con Qwen2.5-0.5B-Instruct (Singleton + Fallback)
-    │   ├── inventario.py       # Transacciones atómicas de ventas, mermas, traslados y pedidos
+    │   ├── llm.py              # Inferencia con Qwen2.5-0.5B-Instruct (Singleton + validador anti-alucinación + Fallback)
+    │   ├── inventario.py       # Transacciones atómicas de ventas (con costo de envío), mermas, traslados y pedidos
     │   ├── geo.py              # API externa Geoapify: geocoding, routing, mapa estático y costo de envío
-    │   └── mercadopago.py      # API externa Mercado Pago: crear y consultar el cobro (Checkout Pro vía Orders)
-    ├── auth/routes.py          # Login local, Google OAuth y elección de rol (Operario/Cajero)
-    ├── main/routes.py          # Dashboard Bento con KPIs reales y buscador global (Cmd+K)
-    ├── pos/routes.py           # Punto de Venta split-screen 60/40, tickets y cobro con Mercado Pago
-    ├── stock/routes.py         # Inventario con semáforo FEFO, mermas y auditoría de movimientos
-    ├── logistica/routes.py     # Tablero de envíos (En preparación -> En camino -> Entregado) + ruta, costo y mapa (proxy) con Geoapify
+    │   ├── mercadopago.py      # API externa Mercado Pago: crear y consultar el cobro (Checkout Pro vía Orders)
+    │   └── dolar.py            # API externa DolarAPI: cotización vigente y conversión a USD bajo demanda
+    ├── auth/routes.py          # Login local, Google OAuth, elección de rol y gestión de usuarios
+    ├── main/routes.py          # Dashboard Bento adaptado por rol (Admin, Cajero, Operario) y buscador global (Cmd+K)
+    ├── pos/routes.py           # Punto de Venta split-screen 60/40, historial/ranking (/pos/ventas), DolarAPI, tickets y Mercado Pago
+    ├── stock/routes.py         # Inventario con semáforo FEFO, filtro/modal de categorías, mermas y auditoría
+    ├── logistica/routes.py     # Tablero de envíos (En preparación -> En camino -> Entregado) + ruta, costo y mapa con Geoapify
     ├── clientes/routes.py      # ABM de clientes y programa de fidelización (1 punto cada $100)
     ├── proveedores/routes.py   # Órdenes de compra a depósito, cuenta corriente y pagos con S3
-    └── ia/routes.py            # Módulo de sugerencias de reposición asistido por IA
+    └── ia/routes.py            # Módulo de sugerencias de reposición asistido por IA (carga asíncrona)
 ```
 
 ### ¿Cómo facilita esta estructura la migración y expansión?
 - **Desacoplamiento de infraestructura:** Si se desea migrar de SQLite a PostgreSQL en producción, solo se modifica `DATABASE_URL` en `.env` sin alterar ningún Blueprint ni modelo.
-- **Encapsulamiento de servicios:** Toda la comunicación con AWS S3 vive en `app/services/s3.py`, toda la inferencia neuronal en `app/services/llm.py`, y cada API externa en su propio módulo (`app/services/geo.py` para Geoapify y `app/services/mercadopago.py` para Mercado Pago). Las rutas web nunca instancian clientes de AWS ni pipelines de Hugging Face, ni arman requests HTTP a las APIs externas: llaman a funciones del servicio (`geo.cotizar()`, `mp.crear_cobro()`, `mp.consultar_cobro()`). Por ejemplo, pasar de la Orders API a Preferences de Mercado Pago solo cambiaría `mercadopago.py`.
+- **Encapsulamiento de servicios:** Toda la comunicación con AWS S3 vive en `app/services/s3.py`, toda la inferencia neuronal en `app/services/llm.py`, y cada API externa en su propio módulo (`geo.py`, `mercadopago.py`, `dolar.py`). Las rutas web nunca instancian clientes de AWS ni pipelines de Hugging Face, ni arman requests HTTP a las APIs externas: llaman a funciones del servicio (`geo.cotizar()`, `mp.crear_cobro()`, `dolar.cotizacion_o_none()`). Por ejemplo, pasar de la Orders API a Preferences de Mercado Pago solo cambiaría `mercadopago.py`.
 
 ---
 
@@ -85,7 +90,7 @@ supermercado/
 | `Flask-Bcrypt` | `1.0.1` | Hashing y verificación de contraseñas (compatible con `$2a$` de Java `jBCrypt`). |
 | `Authlib` | `1.3.2` | Cliente OpenID Connect para el flujo de autenticación con **Google OAuth 2.0**. |
 | `boto3` | `1.35.36` | SDK oficial de AWS para subir archivos y firmar URLs temporales en **Amazon S3**. |
-| `requests` | `2.32.3` | Cliente HTTP para consumir las APIs REST externas: **Geoapify** (geocoding, routing y mapa estático, con `timeout=8`) y **Mercado Pago** (`POST`/`GET /v1/orders`, con `timeout=15`). No se usan SDKs propietarios: las dos integraciones son HTTP puro. |
+| `requests` | `2.32.3` | Cliente HTTP para consumir las APIs REST externas: **Geoapify** (`timeout=8`), **Mercado Pago** (`timeout=15`) y **DolarAPI** (`timeout=6`). No se usan SDKs propietarios: todas las integraciones REST son HTTP puro. |
 | `transformers` | `>=4.45` | Pipeline `text-generation` de Hugging Face para ejecutar la LLM local. |
 | `torch` (CPU) | `>=2.5` | Tensor backend en versión CPU liviana para correr `Qwen/Qwen2.5-0.5B-Instruct`. |
 | `python-dotenv` | `1.0.1` | Carga de secretos y credenciales desde el archivo `.env`. |
@@ -133,6 +138,7 @@ flowchart LR
     BP --> OAUTH["Google OAuth 2.0 (Authlib)"]
     BP --> GEOSVC["services/geo.py (requests + cache)"]
     BP --> MPSVC["services/mercadopago.py (requests)"]
+    BP --> DOLSVC["services/dolar.py (requests + cache)"]
     INV --> MOD["models.py (SQLAlchemy)"]
     MOD --> EXT["extensions.py"]
     EXT --> DB[("SQLite: instance/proyecto.db")]
@@ -140,6 +146,7 @@ flowchart LR
     LLMSVC --> QWEN["Qwen2.5-0.5B-Instruct (Local)"]
     GEOSVC -->|"HTTPS + apiKey"| GEOAPI["API Geoapify: Geocoding, Routing, Static Maps"]
     MPSVC -->|"HTTPS + Bearer token de prueba"| MPAPI["API Mercado Pago: /v1/orders"]
+    DOLSVC -->|"HTTPS pública (sin key)"| DOLAPI["DolarAPI: /v1/dolares/{tipo}"]
     U -.->|"solo para pagar (redirect)"| MPCHK["Checkout mercadopago.com.ar"]
 ```
 
@@ -166,6 +173,7 @@ erDiagram
     productos ||--o{ bajas_productos : registra_merma
     productos ||--o{ historial_movimientos : traza
     ventas ||--o{ pagos_mercadopago : cobra_con_MP
+    ventas ||--o| ventas_cotizacion : congela_dolar
     pagos_mercadopago {
         int id PK
         int venta_id FK
@@ -176,9 +184,18 @@ erDiagram
         datetime fecha
         datetime fecha_actualizacion
     }
+    ventas_cotizacion {
+        int id PK
+        int venta_id FK
+        string tipo
+        float valor_venta
+        float total_usd
+        bool desactualizada
+        datetime fecha
+    }
 ```
 
-`pagos_mercadopago` es una tabla **nueva** (no existía en `supermercado.sql`), por eso `db.create_all()` la crea sin migrar la base existente. Una venta puede tener varios intentos de cobro (por ejemplo, uno rechazado y otro aprobado), pero nunca dos abiertos a la vez. `estado` guarda el `status` de la order (`created`, `processing`, `processed`, `failed`, `canceled`, `expired`, `refunded`…) y `detalle` el `status_detail` crudo (por ejemplo `accredited` o `rejected_by_issuer`), que la pantalla traduce al castellano.
+`pagos_mercadopago` y `ventas_cotizacion` son tablas **nuevas** (no existían en `supermercado.sql`), por eso `db.create_all()` las crea automáticamente sin migrar la base existente. Una venta puede tener varios intentos de cobro (por ejemplo, uno rechazado y otro aprobado), pero nunca dos abiertos a la vez. `estado` guarda el `status` de la order (`created`, `processing`, `processed`, `failed`, `canceled`, `expired`, `refunded`…) y `detalle` el `status_detail` crudo (por ejemplo `accredited` o `rejected_by_issuer`), que la pantalla traduce al castellano. Por su parte, `ventas_cotizacion` congela el tipo de cambio vigente al momento de cerrar la venta.
 
 ### 5.3 Flujo Híbrido de Reposición con IA Local
 
@@ -294,6 +311,10 @@ Decisiones de diseño:
 - **Ticket siempre fresco:** la vista responde `Cache-Control: no-store` y recarga con `pageshow` si el navegador la restaura al tocar "Atrás" desde el checkout.
 - **Cobro posterior a la venta:** la venta y el descuento de stock se registran antes de cobrar; si Mercado Pago rechaza, se reintenta o se cobra con otro medio.
 
+### 5.6 DolarAPI (conversión a USD bajo demanda)
+
+- **DolarAPI (`services/dolar.py`, `/pos/api/dolar`):** consulta `https://dolarapi.com/v1/dolares/{tipo}` (por defecto `oficial`, cacheado `DOLAR_CACHE_SEGUNDOS=300`) únicamente cuando el cajero marca la casilla **"Ver conversión / pagar en dólares (USD)"** en el POS. Si está activada, `POST /pos/api/venta` guarda la cotización usada en `ventas_cotizacion` para que el ticket histórico nunca cambie. Si DolarAPI falla y hay un valor previo en caché, lo usa marcado como `desactualizada=True`; si no hay ninguno, la venta igual se registra en pesos.
+
 ---
 
 ## 6. Proceso de Migración (`supermercado.sql` → SQLite + S3) y Desafíos Técnicos
@@ -309,7 +330,7 @@ Decisiones de diseño:
    Los modelos pequeños (`0.5B` parámetros) son propensos a alucinar operaciones aritméticas si se les pide calcular stocks directamente. Además, el plan gratuito de Render dispone de 512 MB de RAM, insuficiente para cargar PyTorch + pesos del modelo (~1,2 GB). Se resolvió separando responsabilidades: `inventario.calcular_candidatos_reposicion()` calcula en Python las cantidades exactas según rotación, stock en góndola/depósito y fecha de vencimiento, y `services/llm.py` utiliza el modelo `Qwen/Qwen2.5-0.5B-Instruct` (cargado una única vez con patrón *Singleton* e import diferido) exclusivamente para redactar y priorizar el informe ejecutivo, contando con un *fallback* automático por reglas cuando `LLM_ENABLED=false`.
 
 ### 6.2 Resultados Obtenidos y Mejoras Futuras
-- **Resultados:** Se obtuvo una plataforma web completa que cubre el ciclo operativo del supermercado (compra a proveedor → ingreso a depósito → traslado a góndola → venta POS con fidelización, cobro con Mercado Pago y despacho a domicilio con ruta y costo de Geoapify → control de vencimientos y mermas), respaldada por 77 pruebas automatizadas: `tests/test_jumbox.py` (7), `tests/test_geoapify.py` (41) y `tests/test_mercadopago.py` (29). Las pruebas de las APIs externas mockean `requests`, de modo que corren sin keys y sin internet.
+- **Resultados:** Se obtuvo una plataforma web completa que cubre el ciclo operativo del supermercado (compra a proveedor → ingreso a depósito → traslado a góndola → venta POS con fidelización, equivalente opcional en USD con DolarAPI, cobro con Mercado Pago y despacho a domicilio con costo sumado en caja vía Geoapify → control de vencimientos y mermas), respaldada por 100 pruebas automatizadas: `tests/test_jumbox.py` (10), `tests/test_apis_dolar_off.py` (14), `tests/test_geoapify.py` (41), `tests/test_mercadopago.py` (30) y `tests/test_s3_check.py` (5). Las pruebas de APIs externas y S3 mockean la red y `boto3`, de modo que corren sin keys y sin internet.
 - **Proyección futura:**
   1. Migrar la persistencia en Render a **PostgreSQL administrado** para evitar el almacenamiento efímero entre despliegues.
   2. Incorporar trazabilidad por **Lotes múltiples (`Lote`)** por producto para aplicar despacho FEFO (*First Expired, First Out*) cuando coexisten distintas partidas del mismo SKU.

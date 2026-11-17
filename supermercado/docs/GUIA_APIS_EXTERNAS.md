@@ -289,14 +289,13 @@ sequenceDiagram
 
 ---
 
-## 7. APIs sin key: DolarAPI y Open Food Facts (agregadas 16/11/2026)
+## 7. API sin key: DolarAPI (conversión a USD bajo demanda)
 
-Las dos son públicas y **no necesitan key**: no hay nada que sacar ni cargar en Render (solo las variables opcionales de `.env.example`).
+Es pública y **no necesita key**: no hay nada que sacar ni cargar en Render (solo las variables opcionales de `.env.example`).
 
 | API | Dónde se ve | Qué hace | Endpoint | Código |
 |---|---|---|---|---|
-| **DolarAPI** | **POS** (`/pos`) y ticket | Muestra el dólar vigente y el total del ticket en USD. Al confirmar la venta **guarda la cotización usada** (tabla nueva `ventas_cotizacion`), así el ticket no cambia si el dólar se mueve. Si la API cae, la venta se hace igual en pesos | `GET https://dolarapi.com/v1/dolares/{tipo}` | `app/services/dolar.py`, `GET /pos/api/dolar` |
-| **Open Food Facts** | **Stock → Nuevo/Editar producto** | Botón "Buscar" junto al código de barras: completa nombre, sugiere el **proveedor** por la marca y ofrece la **foto** del producto, que se guarda en S3 al grabar | `GET https://world.openfoodfacts.org/api/v2/product/{codigo}.json` | `app/services/openfoodfacts.py`, `GET /stock/api/off/<codigo>` |
+| **DolarAPI** | **POS** (`/pos`) y ticket (opcional) | El POS cobra en pesos por defecto; al tildar **"Ver conversión / pagar en dólares (USD)"**, consulta el dólar vigente, muestra el equivalente en USD y **guarda la cotización usada** en `ventas_cotizacion` al confirmar la venta. Si la API cae, la venta se hace igual en pesos | `GET https://dolarapi.com/v1/dolares/{tipo}` | `app/services/dolar.py`, `GET /pos/api/dolar` |
 
-Variables opcionales: `DOLAR_TIPO` (oficial, blue, tarjeta, mep...), `DOLAR_CACHE_SEGUNDOS`, `OFF_USER_AGENT`.
+Variables opcionales: `DOLAR_TIPO` (oficial, blue, tarjeta, mep...), `DOLAR_CACHE_SEGUNDOS`.
 Tests con la red mockeada: `tests/test_apis_dolar_off.py`.

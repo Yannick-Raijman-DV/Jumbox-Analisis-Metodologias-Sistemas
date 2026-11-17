@@ -281,6 +281,7 @@ def cargar_seed(reset: bool = False) -> dict:
                 venta_id=vid,
                 direccion=direc,
                 telefono=tel,
+                costo=1500.0,
                 estado=est,
                 repartidor=rep,
                 observaciones=obs,
@@ -294,3 +295,69 @@ def cargar_seed(reset: bool = False) -> dict:
 def seed_si_vacia() -> None:
     if SEED_JSON.exists() and RolUsuario.query.first() is None:
         cargar_seed(reset=False)
+
+
+def _mapa_fotos_seed() -> dict[int, str]:
+    """Devuelve {id_producto: nombre_archivo} a partir de migracion/seed.json."""
+    if not SEED_JSON.exists():
+        return {}
+    try:
+        datos = json.loads(SEED_JSON.read_text(encoding="utf-8"))
+        return {
+            int(p["id_producto"]): p["foto_archivo"]
+            for p in datos.get("productos", [])
+            if p.get("foto_archivo")
+        }
+    except Exception:
+        return {}
+
+
+def _archivo_local_foto(foto_key: str, producto_id: int, fotos_seed: dict[int, str]) -> Path | None:
+    """Busca la copia local de una imagen (static/uploads o migracion/fotos)."""
+    en_uploads = s3.carpeta_local() / foto_key
+    if en_uploads.exists():
+        return en_uploads
+    nombre_seed = fotos_seed.get(producto_id)
+    if nombre_seed:
+        en_seed = CARPETA_FOTOS / nombre_seed
+        if en_seed.exists():
+            return en_seed
+    return None
+
+
+def sincronizar_fotos_s3() -> int:
+    """Sube al bucket S3 las imágenes locales de productos que todavía no estén cargadas."""
+    if not s3.usa_s3():
+        return 0
+
+    fotos_seed = _mapa_fotos_seed()
+    sincronizados = 0
+    actualizo_db = False
+
+    for prod in Producto.query.all():
+        try:
+            if prod.foto_key:
+                if s3.existe(prod.foto_key):
+                    sincronizados += 1
+                    continue
+                origen = _archivo_local_foto(prod.foto_key, prod.id, fotos_seed)
+                if origen is not None:
+                    s3.subir_archivo(
+                        io.BytesIO(origen.read_bytes()),
+                        origen.name,
+                        key=prod.foto_key,
+                    )
+                    sincronizados += 1
+            elif prod.id in fotos_seed:
+                nueva_key = _subir_foto_seed(fotos_seed[prod.id], prod.id)
+                if nueva_key:
+                    prod.foto_key = nueva_key
+                    actualizo_db = True
+                    sincronizados += 1
+        except Exception:
+            # Si S3 no está accesible al iniciar, no bloqueamos el arranque de Flask
+            continue
+
+    if actualizo_db:
+        db.session.commit()
+    return sincronizados

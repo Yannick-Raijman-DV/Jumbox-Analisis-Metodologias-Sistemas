@@ -15,6 +15,7 @@ from datetime import date, datetime, timedelta
 from flask import current_app
 from sqlalchemy import func
 
+from . import geo
 from ..extensions import db
 from ..models import (
     ESTADOS_ENVIO,
@@ -162,22 +163,38 @@ def registrar_venta(usuario, items, cliente_id=None, metodo_pago="Efectivo", env
                                          precio_unitario=producto.precio, total=subtotal))
         registrar_movimiento(producto, cantidad, MOV_EGRESO_VENTA, GONDOLA, "Cliente (Venta)", usuario)
 
-    venta.total = round(total, 2)
-
-    if cliente:
-        cliente.puntos += int(venta.total // current_app.config["PESOS_POR_PUNTO"])
+    subtotal_productos = round(total, 2)
+    costo_envio = 0.0
 
     if envio:
         direccion = (envio.get("direccion") or "").strip() or (cliente.direccion if cliente else "")
         if not direccion:
             raise ErrorNegocio("Para un envío a domicilio hace falta la dirección.")
+        distancia_km = None
+        if geo.configurada():
+            cot = geo.cotizar(direccion)
+            if cot.get("ok"):
+                costo_envio = float(cot["costo"])
+                distancia_km = cot.get("km")
+            else:
+                costo_envio = float(current_app.config["ENVIO_COSTO_BASE"])
+        else:
+            costo_envio = float(current_app.config["ENVIO_COSTO_BASE"])
+        costo_envio = round(costo_envio, 2)
         venta.envio = Envio(
             direccion=direccion,
             telefono=(envio.get("telefono") or "").strip() or (cliente.telefono if cliente else None),
             observaciones=(envio.get("observaciones") or "").strip() or None,
+            costo=costo_envio,
+            distancia_km=distancia_km,
             estado=ESTADOS_ENVIO[0],
             fecha_creacion=ahora(),
         )
+
+    venta.total = round(subtotal_productos + costo_envio, 2)
+
+    if cliente:
+        cliente.puntos += int(venta.total // current_app.config["PESOS_POR_PUNTO"])
     return venta
 
 
@@ -400,8 +417,71 @@ def calcular_candidatos_reposicion(dias_ventas: int = 30, dias_cobertura: int = 
 
 
 # ---------------------------------------------------------------------------
-# Dashboard
+# Dashboard y Reporte de Ventas
 # ---------------------------------------------------------------------------
+
+def ranking_productos_mas_vendidos(limite: int = 8) -> list[dict]:
+    """Devuelve los productos más vendidos ordenados por cantidad de unidades."""
+    filas = (
+        db.session.query(
+            Producto.id,
+            Producto.nombre,
+            Producto.codigo_barras,
+            Producto.foto_key,
+            func.coalesce(func.sum(VentaProducto.cantidad), 0).label("unidades"),
+            func.coalesce(func.sum(VentaProducto.total), 0.0).label("recaudado"),
+        )
+        .join(VentaProducto, VentaProducto.producto_id == Producto.id)
+        .group_by(Producto.id)
+        .order_by(func.sum(VentaProducto.cantidad).desc(), func.sum(VentaProducto.total).desc())
+        .limit(limite)
+        .all()
+    )
+    max_unidades = max((int(f.unidades or 0) for f in filas), default=1) or 1
+    return [
+        {
+            "id": f.id,
+            "nombre": f.nombre,
+            "sku": f.codigo_barras or f"JBX-{f.id:05d}",
+            "foto_key": f.foto_key,
+            "unidades": int(f.unidades or 0),
+            "recaudado": round(float(f.recaudado or 0.0), 2),
+            "porcentaje": int(round(int(f.unidades or 0) / max_unidades * 100)),
+        }
+        for f in filas
+    ]
+
+
+def resumen_ventas(metodo_filtro: str = "") -> dict:
+    """Métricas, ranking de productos más vendidos e historial de tickets para Caja / Admin."""
+    hoy = date.today()
+    inicio_hoy = datetime.combine(hoy, datetime.min.time())
+
+    todas = Venta.query.order_by(Venta.fecha.desc()).all()
+    ventas_hoy = [v for v in todas if v.fecha >= inicio_hoy]
+    ventas_filtradas = [v for v in todas if v.metodo_pago == metodo_filtro] if metodo_filtro else todas
+
+    total_acumulado = round(sum(v.total or 0.0 for v in todas), 2)
+    cantidad_total = len(todas)
+
+    agrupado: dict[str, dict] = {}
+    for v in todas:
+        item = agrupado.setdefault(v.metodo_pago, {"metodo": v.metodo_pago, "cantidad": 0, "total": 0.0})
+        item["cantidad"] += 1
+        item["total"] = round(item["total"] + (v.total or 0.0), 2)
+    por_metodo = sorted(agrupado.values(), key=lambda x: x["total"], reverse=True)
+
+    return {
+        "ventas": ventas_filtradas,
+        "ventas_hoy_total": round(sum(v.total or 0.0 for v in ventas_hoy), 2),
+        "ventas_hoy_cantidad": len(ventas_hoy),
+        "ventas_totales": total_acumulado,
+        "cantidad_total": cantidad_total,
+        "ticket_promedio": round(total_acumulado / cantidad_total, 2) if cantidad_total else 0.0,
+        "por_metodo": por_metodo,
+        "mas_vendidos": ranking_productos_mas_vendidos(10),
+    }
+
 
 def resumen_dashboard() -> dict:
     hoy = date.today()
@@ -425,9 +505,11 @@ def resumen_dashboard() -> dict:
         "ventas_totales": db.session.query(func.coalesce(func.sum(Venta.total), 0)).scalar(),
         "alertas_vencimiento": sum(1 for p in productos if 0 <= p.dias_para_vencer <= alerta),
         "vencidos": sum(1 for p in productos if p.dias_para_vencer < 0),
+        "bajo_stock_cantidad": sum(1 for p in productos if p.bajo_minimo),
         "deuda_total": db.session.query(func.coalesce(func.sum(Proveedor.deuda), 0)).scalar(),
         "envios_pendientes": Envio.query.filter(Envio.estado != "Entregado").count(),
         "criticos": criticos[:8],
+        "mas_vendidos": ranking_productos_mas_vendidos(5),
         "grafico": [{"dia": d.strftime("%d/%m"), "total": por_dia[d], "alto": int(por_dia[d] / maximo * 100)}
                     for d in dias],
         "ultimos_movimientos": HistorialMovimiento.query.order_by(HistorialMovimiento.fecha.desc()).limit(5).all(),

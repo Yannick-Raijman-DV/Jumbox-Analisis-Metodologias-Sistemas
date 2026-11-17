@@ -236,6 +236,10 @@ class Venta(db.Model):
     items = db.relationship("VentaProducto", back_populates="venta", cascade="all, delete-orphan")
     envio = db.relationship("Envio", back_populates="venta", uselist=False, cascade="all, delete-orphan")
 
+    @property
+    def subtotal_productos(self) -> float:
+        return round(sum(i.total or 0 for i in self.items), 2)
+
 
 class VentaProducto(db.Model):
     __tablename__ = "ventas_productos"
@@ -259,6 +263,8 @@ class Envio(db.Model):
     venta_id = db.Column("fk_venta", db.Integer, db.ForeignKey("ventas.id_venta"), unique=True, nullable=False)
     direccion = db.Column(db.String(200), nullable=False)
     telefono = db.Column(db.String(30))
+    costo = db.Column(db.Float, nullable=False, default=0.0)
+    distancia_km = db.Column(db.Float)
     estado = db.Column(db.String(20), nullable=False, default=ESTADOS_ENVIO[0])
     repartidor = db.Column(db.String(60))
     observaciones = db.Column(db.String(255))
@@ -363,7 +369,7 @@ class PagoMP(db.Model):
     fecha = db.Column(db.DateTime, nullable=False, default=ahora)
     fecha_actualizacion = db.Column(db.DateTime)
 
-    venta = db.relationship("Venta")
+    venta = db.relationship("Venta", backref=db.backref("pagos_mp", cascade="all, delete-orphan"))
 
     @property
     def pagado(self) -> bool:
@@ -391,4 +397,4 @@ class VentaCotizacion(db.Model):
     desactualizada = db.Column(db.Boolean, nullable=False, default=False)
     fecha = db.Column(db.DateTime, nullable=False, default=ahora)
 
-    venta = db.relationship("Venta", backref=db.backref("cotizacion", uselist=False))
+    venta = db.relationship("Venta", backref=db.backref("cotizacion", uselist=False, cascade="all, delete-orphan"))

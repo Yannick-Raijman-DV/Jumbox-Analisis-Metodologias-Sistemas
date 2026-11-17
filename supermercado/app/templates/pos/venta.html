@@ -114,19 +114,35 @@
 
             <label class="flex items-center gap-2.5 cursor-pointer">
                 <input type="checkbox" id="pos-con-envio" class="rounded text-secondary focus:ring-secondary"/>
-                <span class="font-semibold text-on-surface">Enviar a domicilio</span>
+                <span class="font-semibold text-on-surface">Enviar a domicilio <span class="font-normal text-on-surface-variant">(se suma al total)</span></span>
             </label>
 
-            <div id="pos-panel-envio" class="hidden space-y-2 p-3 rounded-xl bg-surface-container-low">
-                <input type="text" id="pos-envio-direccion" placeholder="Dirección de entrega (obligatoria)" class="w-full rounded-lg border-outline-variant/70 text-sm"/>
+            <div id="pos-panel-envio" class="hidden space-y-2 p-3 rounded-xl bg-surface-container-low"
+                 data-costo-base="{{ config.ENVIO_COSTO_BASE }}"
+                 data-cotizar-url="{{ url_for('logistica.api_cotizar') }}"
+                 data-geo-ok="{{ '1' if config.GEOAPIFY_API_KEY else '0' }}">
+                <div class="flex gap-2">
+                    <input type="text" id="pos-envio-direccion" placeholder="Dirección de entrega (obligatoria)" class="flex-1 rounded-lg border-outline-variant/70 text-sm"/>
+                    <button type="button" id="pos-btn-cotizar-envio" class="shrink-0 px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-bold hover:bg-primary-container disabled:opacity-50">Calcular</button>
+                </div>
+                <p id="pos-envio-info" class="text-xs text-on-surface-variant"></p>
                 <input type="text" id="pos-envio-telefono" placeholder="Teléfono de contacto" class="w-full rounded-lg border-outline-variant/70 text-sm"/>
                 <input type="text" id="pos-envio-obs" placeholder="Piso, timbre u horario" class="w-full rounded-lg border-outline-variant/70 text-sm"/>
             </div>
 
+            <label class="flex items-center gap-2.5 cursor-pointer">
+                <input type="checkbox" id="pos-ver-usd" class="rounded text-primary focus:ring-primary"/>
+                <span class="font-semibold text-on-surface">Ver conversión / pagar en dólares (USD)</span>
+            </label>
+
             <div class="pt-4 border-t border-outline-variant/50 space-y-1.5">
                 <div class="flex justify-between text-sm text-on-surface-variant">
-                    <span>Subtotal</span>
+                    <span>Subtotal productos</span>
                     <span id="pos-subtotal" class="font-label-sm">$0.00</span>
+                </div>
+                <div id="pos-fila-envio" class="hidden flex justify-between text-sm text-primary font-semibold">
+                    <span>Costo de envío</span>
+                    <span id="pos-envio-costo" class="font-label-sm">$0.00</span>
                 </div>
                 <div class="flex justify-between text-sm text-secondary font-semibold">
                     <span>Puntos para el cliente</span>
@@ -136,9 +152,9 @@
                     <span class="text-lg font-bold text-on-surface">Total</span>
                     <span id="pos-total" class="font-label-md text-3xl font-bold text-primary">$0.00</span>
                 </div>
-                <div class="flex justify-between text-xs text-on-surface-variant">
+                <div id="pos-fila-usd" class="hidden flex justify-between text-xs text-on-surface-variant pt-1">
                     <span id="pos-dolar-info" data-url="{{ url_for('pos.api_dolar') }}">Dólar: consultando…</span>
-                    <span id="pos-total-usd" class="font-label-md font-bold">—</span>
+                    <span id="pos-total-usd" class="font-label-md font-bold text-primary">—</span>
                 </div>
             </div>
 

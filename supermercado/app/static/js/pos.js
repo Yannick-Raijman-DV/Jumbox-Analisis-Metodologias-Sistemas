@@ -11,14 +11,30 @@
     const inputBuscar = document.getElementById("pos-buscar");
     const selectCliente = document.getElementById("pos-cliente");
     const selectPago = document.getElementById("pos-metodo-pago");
+
+    // Envío a domicilio (suma al total)
     const chkEnvio = document.getElementById("pos-con-envio");
     const panelEnvio = document.getElementById("pos-panel-envio");
+    const filaEnvio = document.getElementById("pos-fila-envio");
+    const envioCostoEl = document.getElementById("pos-envio-costo");
+    const envioInfoEl = document.getElementById("pos-envio-info");
+    const btnCotizarEnvio = document.getElementById("pos-btn-cotizar-envio");
     const inputDireccion = document.getElementById("pos-envio-direccion");
     const inputTelefono = document.getElementById("pos-envio-telefono");
     const inputObs = document.getElementById("pos-envio-obs");
     const alertaBox = document.getElementById("pos-alerta");
 
+    // Dólar bajo demanda
+    const chkUsd = document.getElementById("pos-ver-usd");
+    const filaUsd = document.getElementById("pos-fila-usd");
+    const dolarInfo = document.getElementById("pos-dolar-info");
+    const totalUsdEl = document.getElementById("pos-total-usd");
+
     if (!itemsContainer) return;
+
+    let dolarVenta = null;
+    let costoEnvio = 0;
+    let totalPesos = 0;
 
     function mostrarAlerta(msg, tipo = "error") {
         alertaBox.textContent = msg;
@@ -31,38 +47,73 @@
         setTimeout(() => alertaBox.classList.add("hidden"), 5000);
     }
 
-    // Cotización del dólar (DolarAPI vía /pos/api/dolar): equivalente en USD del total
-    const dolarInfo = document.getElementById("pos-dolar-info");
-    const totalUsdEl = document.getElementById("pos-total-usd");
-    let dolarVenta = null;
-    let totalPesos = 0;
+    function formatear(n) {
+        return "$" + Number(n).toFixed(2);
+    }
 
     function actualizarUsd() {
+        if (!totalUsdEl) return;
         totalUsdEl.textContent = dolarVenta ? "≈ US$ " + (totalPesos / dolarVenta).toFixed(2) : "—";
     }
 
     async function cargarDolar() {
         if (!dolarInfo) return;
+        dolarInfo.textContent = "Consultando cotización…";
         try {
             const resp = await fetch(dolarInfo.dataset.url);
             const d = await resp.json();
             if (!d.ok) throw new Error(d.error);
             dolarVenta = Number(d.venta);
             dolarInfo.textContent = `Dólar ${d.tipo}: $${dolarVenta.toFixed(2)}` + (d.desactualizada ? " (desactualizado)" : "");
-        } catch (e) {
+        } catch (_e) {
             dolarVenta = null;
-            dolarInfo.textContent = "Dólar no disponible (se vende igual en pesos)";
+            dolarInfo.textContent = "Dólar no disponible (se cobra en pesos)";
         }
         actualizarUsd();
     }
 
-    function formatear(n) {
-        return "$" + Number(n).toFixed(2);
+    async function cotizarEnvio() {
+        if (!panelEnvio) return;
+        const costoBase = Number(panelEnvio.dataset.costoBase || 0);
+        const dir = (inputDireccion.value || "").trim();
+
+        if (panelEnvio.dataset.geoOk !== "1" || !dir) {
+            costoEnvio = costoBase;
+            envioInfoEl.textContent = dir
+                ? `Tarifa base de envío: ${formatear(costoBase)}`
+                : `Escribí la dirección para calcular distancia (base ${formatear(costoBase)}).`;
+            renderizar();
+            return;
+        }
+
+        if (btnCotizarEnvio) btnCotizarEnvio.disabled = true;
+        envioInfoEl.textContent = "Calculando distancia y costo de envío…";
+        try {
+            const resp = await fetch(panelEnvio.dataset.cotizarUrl, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ direccion: dir }),
+            });
+            const d = await resp.json();
+            if (!d.ok) {
+                costoEnvio = costoBase;
+                envioInfoEl.textContent = `${d.error || "No se pudo calcular distancia."} Se aplica tarifa base ${formatear(costoBase)}.`;
+            } else {
+                costoEnvio = Number(d.costo);
+                envioInfoEl.textContent = `${d.km} km (~${d.minutos} min) · Envío ${formatear(costoEnvio)}`;
+            }
+        } catch (_err) {
+            costoEnvio = costoBase;
+            envioInfoEl.textContent = `Sin conexión con el mapa. Se aplica tarifa base ${formatear(costoBase)}.`;
+        } finally {
+            if (btnCotizarEnvio) btnCotizarEnvio.disabled = false;
+            renderizar();
+        }
     }
 
     function renderizar() {
         itemsContainer.innerHTML = "";
-        let total = 0;
+        let subtotal = 0;
 
         if (carrito.size === 0) {
             vacioPlaceholder.classList.remove("hidden");
@@ -74,7 +125,7 @@
 
         carrito.forEach((item) => {
             const sub = item.precio * item.cantidad;
-            total += sub;
+            subtotal += sub;
 
             const fila = document.createElement("div");
             fila.className = "flex items-center justify-between gap-3 p-3 bg-surface-container-low rounded-xl";
@@ -93,11 +144,18 @@
             itemsContainer.appendChild(fila);
         });
 
-        totalPesos = total;
+        const envioActivo = chkEnvio && chkEnvio.checked;
+        const montoEnvio = envioActivo ? costoEnvio : 0;
+        if (filaEnvio && envioCostoEl) {
+            filaEnvio.classList.toggle("hidden", !envioActivo);
+            envioCostoEl.textContent = formatear(montoEnvio);
+        }
+
+        totalPesos = subtotal + montoEnvio;
         actualizarUsd();
-        subtotalEl.textContent = formatear(total);
-        totalEl.textContent = formatear(total);
-        puntosEl.textContent = "+" + Math.floor(total / 100) + " pts";
+        subtotalEl.textContent = formatear(subtotal);
+        totalEl.textContent = formatear(totalPesos);
+        puntosEl.textContent = "+" + Math.floor(totalPesos / 100) + " pts";
     }
 
     function agregarProducto(card) {
@@ -133,8 +191,6 @@
         }
         renderizar();
     }
-
-    cargarDolar();
 
     document.querySelectorAll(".pos-producto-card").forEach((card) => {
         card.addEventListener("click", () => agregarProducto(card));
@@ -213,10 +269,38 @@
         });
     });
 
-    // Autocompletar dirección al elegir cliente y alternar panel de envío
-    if (chkEnvio) {
+    // Dólar bajo demanda
+    if (chkUsd && filaUsd) {
+        chkUsd.addEventListener("change", () => {
+            filaUsd.classList.toggle("hidden", !chkUsd.checked);
+            if (chkUsd.checked) {
+                if (dolarVenta === null) cargarDolar();
+                else actualizarUsd();
+            }
+        });
+    }
+
+    // Envío a domicilio + cálculo de costo
+    if (chkEnvio && panelEnvio) {
         chkEnvio.addEventListener("change", () => {
             panelEnvio.classList.toggle("hidden", !chkEnvio.checked);
+            if (chkEnvio.checked) {
+                cotizarEnvio();
+            } else {
+                costoEnvio = 0;
+                renderizar();
+            }
+        });
+    }
+
+    if (btnCotizarEnvio) {
+        btnCotizarEnvio.addEventListener("click", cotizarEnvio);
+    }
+    if (inputDireccion) {
+        inputDireccion.addEventListener("blur", () => {
+            if (chkEnvio && chkEnvio.checked && inputDireccion.value.trim()) {
+                cotizarEnvio();
+            }
         });
     }
 
@@ -229,6 +313,7 @@
             if (opt && inputTelefono && !inputTelefono.value) {
                 inputTelefono.value = opt.dataset.telefono || "";
             }
+            if (chkEnvio && chkEnvio.checked) cotizarEnvio();
         });
     }
 
@@ -244,6 +329,7 @@
             })),
             cliente_id: selectCliente.value || null,
             metodo_pago: selectPago.value,
+            en_usd: Boolean(chkUsd && chkUsd.checked),
             envio: chkEnvio.checked
                 ? {
                       direccion: inputDireccion.value,

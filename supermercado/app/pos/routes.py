@@ -9,7 +9,7 @@ from ..extensions import db
 from ..models import ROL_ADMIN, ROL_CAJERO, Categoria, Cliente, PagoMP, Producto, Venta, VentaCotizacion, ahora
 from ..services import dolar
 from ..services import mercadopago as mp
-from ..services.inventario import METODOS_PAGO, ErrorNegocio, registrar_venta
+from ..services.inventario import METODOS_PAGO, ErrorNegocio, registrar_venta, resumen_ventas
 
 bp = Blueprint("pos", __name__)
 
@@ -33,6 +33,16 @@ def venta():
     )
 
 
+@bp.route("/ventas")
+@rol_requerido(ROL_ADMIN, ROL_CAJERO)
+def historial():
+    """Historial de ventas emitidas y ranking de productos más vendidos."""
+    metodo = (request.args.get("metodo") or "").strip()
+    filtro = metodo if metodo in METODOS_PAGO else ""
+    datos = resumen_ventas(metodo_filtro=filtro)
+    return render_template("pos/historial.html", **datos, metodo_actual=filtro, metodos_pago=METODOS_PAGO)
+
+
 @bp.route("/api/venta", methods=["POST"])
 @rol_requerido(ROL_ADMIN, ROL_CAJERO)
 def api_registrar_venta():
@@ -48,13 +58,14 @@ def api_registrar_venta():
     except ErrorNegocio as err:
         return jsonify({"ok": False, "error": str(err)}), 400
 
-    cambio = _guardar_cotizacion(nueva)
+    cambio = _guardar_cotizacion(nueva) if datos.get("en_usd") else None
 
     return jsonify(
         {
             "ok": True,
             "venta_id": nueva.id,
             "total": nueva.total,
+            "envio_costo": nueva.envio.costo if nueva.envio else 0.0,
             "total_usd": cambio.total_usd if cambio else None,
             "ticket_url": url_for("pos.ticket", venta_id=nueva.id),
         }

@@ -3,8 +3,8 @@
 {% block content %}
 <div class="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
     <div>
-        <h2 class="text-2xl font-bold text-on-surface">Proveedores, Pedidos y Cuentas por Pagar</h2>
-        <p class="text-sm text-on-surface-variant">Gestión de compras a depósito, saldo de deuda y comprobantes de pago en AWS S3.</p>
+        <h2 class="text-3xl font-bold text-primary tracking-tight">Proveedores</h2>
+        <p class="text-sm text-on-surface-variant">Pedidos de mercadería, deudas y comprobantes de pago.</p>
     </div>
     <div class="bg-white px-4 py-2 rounded-xl border border-outline-variant font-label-md text-sm">
         Deuda Total: <strong class="{% if deuda_total > 0 %}text-error{% else %}text-secondary{% endif %}">${{ "%.2f"|format(deuda_total) }}</strong>
@@ -12,15 +12,15 @@
 </div>
 
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-    <div class="bg-white p-6 rounded-xl border border-outline-variant shadow-sm">
-        <h3 class="font-bold text-lg mb-4">Nuevo Proveedor</h3>
+    <div class="bg-white p-6 rounded-2xl shadow-card">
+        <h3 class="font-bold text-lg mb-4">Nuevo proveedor</h3>
         <form method="post" class="space-y-3 text-sm">
             <div>
-                <label class="block text-xs font-semibold uppercase mb-1">Razón Social *</label>
+                <label class="block text-sm font-semibold mb-1.5">Razón Social *</label>
                 <input type="text" name="nombre" required placeholder="Ej: Arcor S.A." class="w-full rounded-xl border-outline-variant text-sm"/>
             </div>
             <div>
-                <label class="block text-xs font-semibold uppercase mb-1">CUIT *</label>
+                <label class="block text-sm font-semibold mb-1.5">CUIT *</label>
                 <input type="text" name="cuit" required placeholder="30701234567" class="w-full rounded-xl border-outline-variant text-sm font-label-sm"/>
             </div>
             <button type="submit" class="w-full bg-primary text-white font-bold py-2.5 rounded-xl hover:bg-primary-container">
@@ -30,10 +30,10 @@
     </div>
 
     <div class="lg:col-span-2 space-y-6">
-        <div class="bg-white rounded-xl border border-outline-variant shadow-sm overflow-hidden">
+        <div class="bg-white rounded-2xl shadow-card overflow-hidden">
             <table class="w-full text-left border-collapse text-sm">
                 <thead>
-                    <tr class="bg-surface-container-low text-on-surface-variant font-label-md text-xs uppercase border-b border-outline-variant">
+                    <tr class="bg-surface-container-low/70 text-on-surface-variant text-xs">
                         <th class="p-4">Proveedor</th>
                         <th class="p-4">CUIT</th>
                         <th class="p-4">Productos</th>
@@ -61,13 +61,13 @@
             </table>
         </div>
 
-        <div class="bg-white rounded-xl border border-outline-variant shadow-sm overflow-hidden">
+        <div class="bg-white rounded-2xl shadow-card overflow-hidden">
             <div class="p-4 border-b border-outline-variant">
-                <h3 class="font-bold">Últimas Órdenes de Compra (`pedidos_proveedor`)</h3>
+                <h3 class="font-bold">Últimos pedidos</h3>
             </div>
             <table class="w-full text-left border-collapse text-sm">
                 <thead>
-                    <tr class="bg-surface-container-low text-on-surface-variant font-label-md text-xs uppercase border-b border-outline-variant">
+                    <tr class="bg-surface-container-low/70 text-on-surface-variant text-xs">
                         <th class="p-3.5">Orden</th>
                         <th class="p-3.5">Fecha</th>
                         <th class="p-3.5">Proveedor</th>

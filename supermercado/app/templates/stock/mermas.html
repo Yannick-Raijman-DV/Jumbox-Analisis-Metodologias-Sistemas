@@ -3,21 +3,21 @@
 {% block content %}
 <div class="mb-6 flex justify-between items-center">
     <div>
-        <h2 class="text-2xl font-bold text-on-surface">Control de Mermas y Bajas (`bajas_productos`)</h2>
-        <p class="text-sm text-on-surface-variant">Descuenta unidades vencidas o dañadas y deja trazabilidad en `historial_movimientos`.</p>
+        <h2 class="text-3xl font-bold text-primary tracking-tight">Mermas</h2>
+        <p class="text-sm text-on-surface-variant">Descontá las unidades vencidas o dañadas. Queda registro de cada baja.</p>
     </div>
-    <a href="{{ url_for('stock.index') }}" class="text-xs font-semibold text-primary hover:underline">← Volver a Inventario</a>
+    <a href="{{ url_for('stock.index') }}" class="text-sm font-semibold text-primary hover:underline inline-flex items-center gap-1"><span class="material-symbols-outlined text-[18px]">arrow_back</span>Volver al inventario</a>
 </div>
 
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-    <div class="bg-white p-6 rounded-xl border border-outline-variant shadow-sm">
+    <div class="bg-white p-6 rounded-2xl shadow-card">
         <h3 class="font-bold text-lg mb-4 text-error flex items-center gap-2">
             <span class="material-symbols-outlined">delete_sweep</span>
-            <span>Registrar Nueva Merma</span>
+            <span>Registrar una merma</span>
         </h3>
         <form method="post" class="space-y-3 text-sm">
             <div>
-                <label class="block text-xs font-semibold uppercase mb-1">Producto</label>
+                <label class="block text-sm font-semibold mb-1.5">Producto</label>
                 <select name="producto_id" required class="w-full rounded-xl border-outline-variant text-sm">
                     {% for p in productos %}
                     <option value="{{ p.id }}">
@@ -28,11 +28,11 @@
             </div>
             <div class="grid grid-cols-2 gap-3">
                 <div>
-                    <label class="block text-xs font-semibold uppercase mb-1">Cantidad</label>
+                    <label class="block text-sm font-semibold mb-1.5">Cantidad</label>
                     <input type="number" name="cantidad" min="1" value="1" required class="w-full rounded-xl border-outline-variant text-sm font-label-sm"/>
                 </div>
                 <div>
-                    <label class="block text-xs font-semibold uppercase mb-1">Ubicación</label>
+                    <label class="block text-sm font-semibold mb-1.5">Ubicación</label>
                     <select name="ubicacion" class="w-full rounded-xl border-outline-variant text-sm">
                         <option value="gondola">Góndola</option>
                         <option value="deposito">Depósito Central</option>
@@ -40,26 +40,26 @@
                 </div>
             </div>
             <div>
-                <label class="block text-xs font-semibold uppercase mb-1">Motivo de Baja</label>
+                <label class="block text-sm font-semibold mb-1.5">Motivo</label>
                 <select name="motivo" class="w-full rounded-xl border-outline-variant text-sm">
                     {% for m in motivos_merma %}
                     <option value="{{ m }}">{{ m }}</option>
                     {% endfor %}
                 </select>
             </div>
-            <button type="submit" class="w-full bg-[#ba1a1a] hover:bg-[#ef4444] text-white font-bold py-2.5 rounded-xl transition-colors">
-                Confirmar Baja de Stock
+            <button type="submit" class="w-full bg-[#ba1a1a] hover:bg-[#ef4444] text-white font-bold py-3 rounded-2xl transition-colors">
+                Confirmar baja
             </button>
         </form>
     </div>
 
-    <div class="lg:col-span-2 bg-white rounded-xl border border-outline-variant shadow-sm overflow-hidden">
+    <div class="lg:col-span-2 bg-white rounded-2xl shadow-card overflow-hidden">
         <div class="p-4 border-b border-outline-variant">
-            <h3 class="font-bold">Historial de Mermas Registradas</h3>
+            <h3 class="font-bold">Mermas registradas</h3>
         </div>
         <table class="w-full text-left border-collapse text-sm">
             <thead>
-                <tr class="bg-surface-container-low text-on-surface-variant font-label-md text-xs uppercase border-b border-outline-variant">
+                <tr class="bg-surface-container-low/70 text-on-surface-variant text-xs">
                     <th class="p-3.5">Fecha</th>
                     <th class="p-3.5">Producto</th>
                     <th class="p-3.5">Motivo</th>
@@ -77,7 +77,7 @@
                     <td class="p-3.5 text-right font-label-md font-bold text-error">-{{ b.cantidad }}</td>
                 </tr>
                 {% else %}
-                <tr><td colspan="5" class="p-6 text-center text-on-surface-variant">Todavía no hay mermas registradas.</td></tr>
+                <tr><td colspan="5" class="p-10 text-center text-on-surface-variant"><span class="material-symbols-outlined text-secondary text-3xl block mb-1">check_circle</span>Todavía no hay mermas. Cuando registres una, aparece acá.</td></tr>
                 {% endfor %}
             </tbody>
         </table>

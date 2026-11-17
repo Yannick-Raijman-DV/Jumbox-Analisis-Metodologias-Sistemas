@@ -23,7 +23,7 @@
     function mostrarAlerta(msg, tipo = "error") {
         alertaBox.textContent = msg;
         alertaBox.className =
-            "mb-3 px-4 py-2.5 rounded-xl text-body-sm font-medium " +
+            "mb-3 px-4 py-2.5 rounded-xl text-sm font-medium " +
             (tipo === "error"
                 ? "bg-error-container text-on-error-container border border-error/30"
                 : "bg-secondary-container text-on-secondary-container");
@@ -77,16 +77,16 @@
             total += sub;
 
             const fila = document.createElement("div");
-            fila.className = "flex items-center justify-between gap-2 p-3 bg-surface-container-low rounded-xl border border-outline-variant/60";
+            fila.className = "flex items-center justify-between gap-3 p-3 bg-surface-container-low rounded-xl";
             fila.innerHTML = `
                 <div class="min-w-0 flex-1">
                     <p class="font-semibold text-on-surface truncate">${item.nombre}</p>
                     <p class="font-label-sm text-xs text-on-surface-variant">${item.sku} • ${formatear(item.precio)} c/u</p>
                 </div>
                 <div class="flex items-center gap-1.5">
-                    <button type="button" data-accion="restar" data-id="${item.id}" class="w-7 h-7 rounded-lg bg-white border border-outline-variant hover:bg-surface-container-high font-bold">-</button>
+                    <button type="button" data-accion="restar" data-id="${item.id}" class="w-8 h-8 rounded-full bg-white border border-outline-variant/70 hover:bg-surface-container-high font-bold" aria-label="Quitar uno">−</button>
                     <span class="w-8 text-center font-label-md font-bold">${item.cantidad}</span>
-                    <button type="button" data-accion="sumar" data-id="${item.id}" class="w-7 h-7 rounded-lg bg-white border border-outline-variant hover:bg-surface-container-high font-bold">+</button>
+                    <button type="button" data-accion="sumar" data-id="${item.id}" class="w-8 h-8 rounded-full bg-white border border-outline-variant/70 hover:bg-surface-container-high font-bold" aria-label="Agregar uno">+</button>
                 </div>
                 <div class="w-20 text-right font-label-md font-bold text-primary">${formatear(sub)}</div>
             `;

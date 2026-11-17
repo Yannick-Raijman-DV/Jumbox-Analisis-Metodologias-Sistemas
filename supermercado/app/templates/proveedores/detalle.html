@@ -3,7 +3,7 @@
 {% block content %}
 <div class="mb-6 flex justify-between items-center">
     <div>
-        <h2 class="text-2xl font-bold text-on-surface">{{ proveedor.nombre }}</h2>
+        <h2 class="text-3xl font-bold text-primary tracking-tight">{{ proveedor.nombre }}</h2>
         <p class="text-sm font-label-sm text-on-surface-variant">CUIT {{ proveedor.cuit }} • Deuda actual: <strong class="{% if proveedor.deuda > 0 %}text-error{% else %}text-secondary{% endif %}">${{ "%.2f"|format(proveedor.deuda) }}</strong></p>
     </div>
     <a href="{{ url_for('proveedores.index') }}" class="text-xs font-semibold text-primary hover:underline">← Volver a Proveedores</a>
@@ -11,9 +11,9 @@
 
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
     <!-- Emitir pedido de compra -->
-    <div class="bg-white p-6 rounded-xl border border-outline-variant shadow-sm">
-        <h3 class="font-bold text-lg mb-1">Registrar Pedido a Depósito Central</h3>
-        <p class="text-xs text-on-surface-variant mb-4">Suma unidades al depósito (`productos_depositos`), registra `INGRESO_COMPRA` y actualiza la deuda.</p>
+    <div class="bg-white p-6 rounded-2xl shadow-card">
+        <h3 class="font-bold text-lg mb-1">Registrar un pedido</h3>
+        <p class="text-xs text-on-surface-variant mb-4">Suma las unidades al depósito y actualiza lo que se le debe al proveedor.</p>
 
         <form method="post" action="{{ url_for('proveedores.crear_pedido', proveedor_id=proveedor.id) }}" class="space-y-3 text-sm">
             <table class="w-full text-left border-collapse text-xs">
@@ -48,23 +48,23 @@
 
     <!-- Registrar pago de deuda con comprobante S3 -->
     <div class="space-y-6">
-        <div class="bg-white p-6 rounded-xl border border-outline-variant shadow-sm">
-            <h3 class="font-bold text-lg mb-1">Registrar Pago de Deuda (con Comprobante S3)</h3>
-            <p class="text-xs text-on-surface-variant mb-4">Subí el comprobante de transferencia (PDF o imagen) al bucket privado de AWS S3.</p>
+        <div class="bg-white p-6 rounded-2xl shadow-card">
+            <h3 class="font-bold text-lg mb-1">Registrar un pago</h3>
+            <p class="text-xs text-on-surface-variant mb-4">Subí el comprobante de la transferencia (PDF o imagen).</p>
 
             <form method="post" enctype="multipart/form-data" action="{{ url_for('proveedores.registrar_pago', proveedor_id=proveedor.id) }}" class="space-y-3 text-sm">
                 <div class="grid grid-cols-2 gap-3">
                     <div>
-                        <label class="block text-xs font-semibold uppercase mb-1">Monto a Pagar ($) *</label>
+                        <label class="block text-sm font-semibold mb-1.5">Monto a Pagar ($) *</label>
                         <input type="number" step="0.01" min="0.01" max="{{ proveedor.deuda }}" name="monto" required value="{{ proveedor.deuda if proveedor.deuda > 0 else '' }}" class="w-full rounded-xl border-outline-variant text-sm font-label-sm"/>
                     </div>
                     <div>
-                        <label class="block text-xs font-semibold uppercase mb-1">Observaciones</label>
+                        <label class="block text-sm font-semibold mb-1.5">Observaciones</label>
                         <input type="text" name="observaciones" placeholder="Transf. #..." class="w-full rounded-xl border-outline-variant text-sm"/>
                     </div>
                 </div>
                 <div>
-                    <label class="block text-xs font-semibold uppercase mb-1">Comprobante (PDF / Imagen)</label>
+                    <label class="block text-sm font-semibold mb-1.5">Comprobante (PDF / Imagen)</label>
                     <input type="file" name="comprobante" accept=".pdf,.jpg,.jpeg,.png,.webp" class="w-full text-xs"/>
                 </div>
                 <button type="submit" {% if proveedor.deuda <= 0 %}disabled{% endif %} class="w-full bg-secondary disabled:opacity-40 text-white font-bold py-2.5 rounded-xl hover:bg-secondary/90">
@@ -73,7 +73,7 @@
             </form>
         </div>
 
-        <div class="bg-white p-5 rounded-xl border border-outline-variant shadow-sm">
+        <div class="bg-white p-5 rounded-2xl shadow-card">
             <h4 class="font-bold text-sm mb-3">Pagos Realizados</h4>
             <div class="space-y-2 text-xs">
                 {% for pg in proveedor.pagos %}
@@ -84,7 +84,7 @@
                     </div>
                     {% if pg.comprobante_key and url_imagen(pg.comprobante_key) %}
                     <a href="{{ url_imagen(pg.comprobante_key) }}" target="_blank" class="px-2.5 py-1 rounded bg-primary text-white font-semibold">
-                        Ver Comprobante S3
+                        Ver comprobante
                     </a>
                     {% endif %}
                 </div>

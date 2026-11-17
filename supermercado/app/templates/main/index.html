@@ -1,135 +1,156 @@
 {% extends "base.html" %}
 {% block title %}JUMBOX - Dashboard Principal{% endblock %}
 {% block content %}
-<div class="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+<!-- Encabezado -->
+<div class="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
     <div>
-        <h2 class="text-2xl text-on-surface font-bold">Dashboard Principal</h2>
-        <p class="text-sm text-on-surface-variant mt-0.5">Métricas operativas en vivo desde SQLite (migrado de supermercado.sql).</p>
+        <p class="text-sm text-on-surface-variant" id="fecha-hoy"></p>
+        <h2 class="text-3xl md:text-4xl text-primary font-bold tracking-tight mt-1">Hola, {{ current_user.nombre.split(' ')[0] }}</h2>
+        <p class="text-base text-on-surface-variant mt-1.5">Así viene el día en la tienda.</p>
     </div>
-    <div class="flex gap-2">
+    <div class="flex flex-wrap gap-2">
+        {% if current_user.tiene_rol('Admin', 'Cajero') %}
+        <a href="{{ url_for('pos.venta') }}" class="bg-secondary text-white px-5 py-2.5 rounded-full text-sm font-bold hover:bg-[#10b981] transition-colors shadow-card flex items-center gap-2">
+            <span class="material-symbols-outlined fill text-[20px]">add_circle</span>
+            <span>Nueva venta</span>
+        </a>
+        {% endif %}
         {% if current_user.tiene_rol('Admin', 'Operario') %}
-        <a href="{{ url_for('ia.reposicion') }}" class="bg-primary text-white px-4 py-2 rounded-xl font-label-md text-xs font-semibold hover:bg-primary-container transition-colors shadow-sm flex items-center gap-2">
-            <span class="material-symbols-outlined text-[18px]">psychology</span>
-            <span>Sugerencias IA</span>
+        <a href="{{ url_for('ia.reposicion') }}" class="bg-white text-primary border border-outline-variant px-5 py-2.5 rounded-full text-sm font-semibold hover:bg-surface-container-low transition-colors flex items-center gap-2">
+            <span class="material-symbols-outlined text-[20px]">auto_awesome</span>
+            <span>Qué reponer</span>
         </a>
         {% endif %}
     </div>
 </div>
 
-<!-- KPI Cards (Bento Grid) -->
+<!-- Resumen -->
 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-    <div class="bg-white p-5 rounded-xl border border-outline-variant shadow-sm">
-        <p class="font-label-md text-xs text-on-surface-variant uppercase tracking-wider">Facturación Acumulada</p>
-        <h3 class="font-label-md text-2xl font-bold text-on-surface mt-2">${{ "%.2f"|format(ventas_totales) }}</h3>
-        <p class="text-xs text-secondary font-semibold mt-1">Hoy: ${{ "%.2f"|format(ventas_hoy_total) }} ({{ ventas_hoy_cantidad }} tickets)</p>
+    <div class="bg-white p-5 rounded-2xl shadow-card">
+        <div class="flex items-center justify-between">
+            <p class="text-sm text-on-surface-variant font-medium">Ventas totales</p>
+            <span class="w-9 h-9 rounded-full bg-secondary-container/60 text-secondary flex items-center justify-center"><span class="material-symbols-outlined text-[20px]">payments</span></span>
+        </div>
+        <h3 class="font-label-md text-2xl font-bold text-on-surface mt-3">${{ "%.2f"|format(ventas_totales) }}</h3>
+        <p class="text-sm text-secondary font-semibold mt-1">Hoy: ${{ "%.2f"|format(ventas_hoy_total) }} en {{ ventas_hoy_cantidad }} {{ 'venta' if ventas_hoy_cantidad == 1 else 'ventas' }}</p>
     </div>
 
-    <div class="bg-white p-5 rounded-xl border border-outline-variant shadow-sm">
-        <p class="font-label-md text-xs text-on-surface-variant uppercase tracking-wider">Envíos Pendientes</p>
-        <h3 class="font-label-md text-2xl font-bold text-on-surface mt-2">{{ envios_pendientes }}</h3>
-        <a href="{{ url_for('logistica.index') }}" class="text-xs text-primary hover:underline mt-1 inline-block">Ver tablero de logística →</a>
+    <div class="bg-white p-5 rounded-2xl shadow-card">
+        <div class="flex items-center justify-between">
+            <p class="text-sm text-on-surface-variant font-medium">Envíos pendientes</p>
+            <span class="w-9 h-9 rounded-full bg-primary-fixed text-primary flex items-center justify-center"><span class="material-symbols-outlined text-[20px]">two_wheeler</span></span>
+        </div>
+        <h3 class="text-3xl font-bold text-on-surface mt-3">{{ envios_pendientes }}</h3>
+        <a href="{{ url_for('logistica.index') }}" class="text-sm text-primary font-semibold hover:underline mt-1 inline-block">Ver envíos</a>
     </div>
 
-    <div class="bg-white p-5 rounded-xl border border-[#f59e0b] shadow-sm relative overflow-hidden">
-        <div class="absolute top-0 left-0 w-1.5 h-full bg-[#f59e0b]"></div>
-        <p class="font-label-md text-xs text-[#6c4300] uppercase tracking-wider pl-2">Caducidad (≤7 días / Vencidos)</p>
-        <h3 class="font-label-md text-2xl font-bold text-on-surface mt-2 pl-2">{{ alertas_vencimiento }} por vencer • <span class="text-error">{{ vencidos }} vencidos</span></h3>
-        <p class="text-xs text-on-surface-variant mt-1 pl-2">Semáforo FEFO activo</p>
+    <div class="bg-white p-5 rounded-2xl shadow-card ring-1 ring-[#f59e0b]/40">
+        <div class="flex items-center justify-between">
+            <p class="text-sm text-[#6c4300] font-medium">Vencimientos</p>
+            <span class="w-9 h-9 rounded-full bg-[#f59e0b]/20 text-[#6c4300] flex items-center justify-center"><span class="material-symbols-outlined text-[20px]">event_busy</span></span>
+        </div>
+        <h3 class="text-3xl font-bold text-on-surface mt-3">{{ alertas_vencimiento }} <span class="text-base font-semibold text-[#6c4300]">por vencer</span></h3>
+        <p class="text-sm mt-1"><span class="font-semibold text-error">{{ vencidos }} {{ 'vencido' if vencidos == 1 else 'vencidos' }}</span> <span class="text-on-surface-variant">· vencen en 7 días o menos</span></p>
     </div>
 
-    <div class="bg-white p-5 rounded-xl border border-outline-variant shadow-sm">
-        <p class="font-label-md text-xs text-on-surface-variant uppercase tracking-wider">Deuda a Proveedores</p>
-        <h3 class="font-label-md text-2xl font-bold {% if deuda_total > 0 %}text-error{% else %}text-on-surface{% endif %} mt-2">${{ "%.2f"|format(deuda_total) }}</h3>
-        <p class="text-xs text-on-surface-variant mt-1">Cuentas corrientes activas</p>
+    <div class="bg-white p-5 rounded-2xl shadow-card">
+        <div class="flex items-center justify-between">
+            <p class="text-sm text-on-surface-variant font-medium">Deuda con proveedores</p>
+            <span class="w-9 h-9 rounded-full {% if deuda_total > 0 %}bg-error-container text-error{% else %}bg-surface-container text-on-surface-variant{% endif %} flex items-center justify-center"><span class="material-symbols-outlined text-[20px]">receipt_long</span></span>
+        </div>
+        <h3 class="font-label-md text-2xl font-bold {% if deuda_total > 0 %}text-error{% else %}text-on-surface{% endif %} mt-3">${{ "%.2f"|format(deuda_total) }}</h3>
+        <p class="text-sm text-on-surface-variant mt-1">{{ 'Para pagar' if deuda_total > 0 else 'Todo al día' }}</p>
     </div>
 </div>
 
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-    <!-- Left 2 cols -->
     <div class="lg:col-span-2 space-y-6">
-        <div class="bg-white rounded-xl border border-outline-variant shadow-sm overflow-hidden">
-            <div class="p-4 border-b border-outline-variant flex justify-between items-center bg-surface-container-low/50">
-                <h3 class="font-bold text-on-surface flex items-center gap-2">
-                    <span class="material-symbols-outlined text-error">warning</span>
-                    <span>Productos Críticos (Vencimiento y Bajo Stock)</span>
-                </h3>
+        <!-- Productos que necesitan atención -->
+        <div class="bg-white rounded-2xl shadow-card overflow-hidden">
+            <div class="px-5 py-4 flex justify-between items-center">
+                <h3 class="text-lg font-bold text-on-surface">Productos que necesitan atención</h3>
                 {% if current_user.tiene_rol('Admin', 'Operario') %}
-                <a href="{{ url_for('stock.index') }}" class="text-primary font-label-md text-xs hover:underline">Ir a Stock →</a>
+                <a href="{{ url_for('stock.index') }}" class="text-primary text-sm font-semibold hover:underline">Ver inventario</a>
                 {% endif %}
             </div>
             <div class="overflow-x-auto">
                 <table class="w-full text-left border-collapse text-sm">
                     <thead>
-                        <tr class="bg-surface-container-low text-on-surface-variant font-label-md text-xs uppercase border-b border-outline-variant">
-                            <th class="p-3.5">Producto</th>
-                            <th class="p-3.5">SKU</th>
-                            <th class="p-3.5">Vencimiento</th>
-                            <th class="p-3.5 text-right">Góndola / Dep.</th>
+                        <tr class="bg-surface-container-low/70 text-on-surface-variant text-xs">
+                            <th class="px-5 py-3">Producto</th>
+                            <th class="px-5 py-3">Código</th>
+                            <th class="px-5 py-3">Vencimiento</th>
+                            <th class="px-5 py-3 text-right">Góndola / Depósito</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for p in criticos %}
-                        <tr class="border-b border-outline-variant/60 hover:bg-surface-container-low/30">
-                            <td class="p-3.5 flex items-center gap-3">
+                        <tr class="border-b border-outline-variant/40 last:border-0">
+                            <td class="px-5 py-3.5 flex items-center gap-3">
                                 {% if p.foto_key and url_imagen(p.foto_key) %}
-                                <img src="{{ url_imagen(p.foto_key) }}" alt="{{ p.nombre }}" class="w-9 h-9 rounded-lg object-cover border"/>
+                                <img src="{{ url_imagen(p.foto_key) }}" alt="{{ p.nombre }}" class="w-10 h-10 rounded-xl object-cover"/>
                                 {% else %}
-                                <div class="w-9 h-9 bg-surface-variant rounded-lg flex items-center justify-center">
+                                <div class="w-10 h-10 bg-surface-container rounded-xl flex items-center justify-center">
                                     <span class="material-symbols-outlined text-on-surface-variant text-lg">inventory_2</span>
                                 </div>
                                 {% endif %}
                                 <span class="font-semibold">{{ p.nombre }}</span>
                             </td>
-                            <td class="p-3.5 font-label-md text-xs text-on-surface-variant">{{ p.sku }}</td>
-                            <td class="p-3.5">
+                            <td class="px-5 py-3.5 font-label-md text-xs text-on-surface-variant">{{ p.sku }}</td>
+                            <td class="px-5 py-3.5">
                                 {% if p.estado_vencimiento == 'vencido' %}
-                                <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#ba1a1a]/15 text-[#ba1a1a]">Vencido ({{ p.fecha_vencimiento }})</span>
+                                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-[#ef4444]/15 text-[#ba1a1a]"><span class="w-1.5 h-1.5 rounded-full bg-[#ef4444]"></span>Vencido ({{ p.fecha_vencimiento }})</span>
                                 {% elif p.estado_vencimiento == 'por_vencer' %}
-                                <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#f59e0b]/20 text-[#6c4300]">Vence en {{ p.dias_para_vencer }}d</span>
+                                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-[#f59e0b]/20 text-[#6c4300]"><span class="w-1.5 h-1.5 rounded-full bg-[#f59e0b]"></span>Vence en {{ p.dias_para_vencer }} {{ 'día' if p.dias_para_vencer == 1 else 'días' }}</span>
                                 {% else %}
-                                <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-[#006c49]">{{ p.fecha_vencimiento }}</span>
+                                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-[#10b981]/15 text-[#006c49]"><span class="w-1.5 h-1.5 rounded-full bg-[#10b981]"></span>{{ p.fecha_vencimiento }}</span>
                                 {% endif %}
                             </td>
-                            <td class="p-3.5 text-right font-label-md font-bold {% if p.bajo_minimo %}text-error{% endif %}">
+                            <td class="px-5 py-3.5 text-right font-label-md font-bold {% if p.bajo_minimo %}text-error{% endif %}">
                                 {{ p.stock_gondola }} / {{ p.stock_deposito }}
                             </td>
                         </tr>
                         {% else %}
-                        <tr><td colspan="4" class="p-6 text-center text-on-surface-variant">No hay alertas críticas de stock.</td></tr>
+                        <tr><td colspan="4" class="px-5 py-10 text-center text-on-surface-variant">
+                            <span class="material-symbols-outlined text-secondary text-3xl block mb-1">check_circle</span>
+                            Todo en orden: no hay productos por vencer ni con poco stock.
+                        </td></tr>
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
         </div>
 
-        <!-- Últimas Ventas -->
-        <div class="bg-white rounded-xl border border-outline-variant shadow-sm overflow-hidden">
-            <div class="p-4 border-b border-outline-variant flex justify-between items-center">
-                <h3 class="font-bold text-on-surface">Últimas Ventas Registradas</h3>
+        <!-- Últimas ventas -->
+        <div class="bg-white rounded-2xl shadow-card overflow-hidden">
+            <div class="px-5 py-4 flex justify-between items-center">
+                <h3 class="text-lg font-bold text-on-surface">Últimas ventas</h3>
                 {% if current_user.tiene_rol('Admin', 'Cajero') %}
-                <a href="{{ url_for('pos.venta') }}" class="text-secondary font-label-md text-xs font-bold hover:underline">+ Nueva Venta</a>
+                <a href="{{ url_for('pos.venta') }}" class="text-secondary text-sm font-bold hover:underline">Nueva venta</a>
                 {% endif %}
             </div>
             <div class="overflow-x-auto">
                 <table class="w-full text-left border-collapse text-sm">
                     <thead>
-                        <tr class="bg-surface-container-low text-on-surface-variant font-label-md text-xs uppercase border-b border-outline-variant">
-                            <th class="p-3.5">Ticket</th>
-                            <th class="p-3.5">Fecha</th>
-                            <th class="p-3.5">Cliente</th>
-                            <th class="p-3.5">Cajero</th>
-                            <th class="p-3.5 text-right">Total</th>
+                        <tr class="bg-surface-container-low/70 text-on-surface-variant text-xs">
+                            <th class="px-5 py-3">Ticket</th>
+                            <th class="px-5 py-3">Fecha</th>
+                            <th class="px-5 py-3">Cliente</th>
+                            <th class="px-5 py-3">Cajero</th>
+                            <th class="px-5 py-3 text-right">Total</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for v in ultimas_ventas %}
-                        <tr class="border-b border-outline-variant/60">
-                            <td class="p-3.5 font-label-md font-bold text-primary">#{{ v.id }}</td>
-                            <td class="p-3.5 text-xs text-on-surface-variant font-label-sm">{{ v.fecha.strftime('%d/%m/%Y %H:%M') }}</td>
-                            <td class="p-3.5">{{ v.cliente.nombre_completo if v.cliente else 'Consumidor Final' }}</td>
-                            <td class="p-3.5 text-xs text-on-surface-variant">{{ v.usuario.nombre if v.usuario else '-' }}</td>
-                            <td class="p-3.5 text-right font-label-md font-bold">${{ "%.2f"|format(v.total) }}</td>
+                        <tr class="border-b border-outline-variant/40 last:border-0">
+                            <td class="px-5 py-3.5 font-label-md font-bold text-primary">#{{ v.id }}</td>
+                            <td class="px-5 py-3.5 text-xs text-on-surface-variant font-label-sm">{{ v.fecha.strftime('%d/%m/%Y %H:%M') }}</td>
+                            <td class="px-5 py-3.5">{{ v.cliente.nombre_completo if v.cliente else 'Consumidor final' }}</td>
+                            <td class="px-5 py-3.5 text-xs text-on-surface-variant">{{ v.usuario.nombre if v.usuario else '-' }}</td>
+                            <td class="px-5 py-3.5 text-right font-label-md font-bold">${{ "%.2f"|format(v.total) }}</td>
                         </tr>
+                        {% else %}
+                        <tr><td colspan="5" class="px-5 py-10 text-center text-on-surface-variant">Todavía no hay ventas. Cuando cobres la primera, aparece acá.</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>
@@ -137,42 +158,55 @@
         </div>
     </div>
 
-    <!-- Right col -->
+    <!-- Columna derecha -->
     <div class="space-y-6">
-        <div class="bg-primary-container text-white p-6 rounded-xl shadow-md space-y-3">
-            <h3 class="font-bold text-lg">Accesos Rápidos</h3>
+        <div class="bg-primary text-white p-6 rounded-2xl shadow-card space-y-3">
+            <h3 class="font-bold text-lg">Atajos</h3>
             {% if current_user.tiene_rol('Admin', 'Cajero') %}
-            <a href="{{ url_for('pos.venta') }}" class="w-full flex items-center justify-between bg-white text-primary-container p-3.5 rounded-xl font-semibold text-sm hover:bg-surface">
-                <span class="flex items-center gap-2"><span class="material-symbols-outlined text-secondary">point_of_sale</span> Terminal POS</span>
+            <a href="{{ url_for('pos.venta') }}" class="w-full flex items-center justify-between bg-white text-primary p-3.5 rounded-xl font-semibold text-sm hover:bg-surface transition-colors">
+                <span class="flex items-center gap-2"><span class="material-symbols-outlined text-secondary">point_of_sale</span> Caja</span>
                 <span class="material-symbols-outlined">arrow_forward</span>
             </a>
             {% endif %}
             {% if current_user.tiene_rol('Admin', 'Operario') %}
-            <a href="{{ url_for('stock.index') }}" class="w-full flex items-center justify-between bg-white/10 text-white p-3.5 rounded-xl font-semibold text-sm hover:bg-white/20">
-                <span class="flex items-center gap-2"><span class="material-symbols-outlined">inventory_2</span> Stock y Fotos S3</span>
+            <a href="{{ url_for('stock.index') }}" class="w-full flex items-center justify-between bg-white/10 text-white p-3.5 rounded-xl font-semibold text-sm hover:bg-white/20 transition-colors">
+                <span class="flex items-center gap-2"><span class="material-symbols-outlined">inventory_2</span> Inventario</span>
                 <span class="material-symbols-outlined">arrow_forward</span>
             </a>
-            <a href="{{ url_for('ia.reposicion') }}" class="w-full flex items-center justify-between bg-white/10 text-white p-3.5 rounded-xl font-semibold text-sm hover:bg-white/20">
-                <span class="flex items-center gap-2"><span class="material-symbols-outlined">psychology</span> Reposición con LLM</span>
+            <a href="{{ url_for('ia.reposicion') }}" class="w-full flex items-center justify-between bg-white/10 text-white p-3.5 rounded-xl font-semibold text-sm hover:bg-white/20 transition-colors">
+                <span class="flex items-center gap-2"><span class="material-symbols-outlined">auto_awesome</span> Qué reponer</span>
                 <span class="material-symbols-outlined">arrow_forward</span>
             </a>
             {% endif %}
         </div>
 
-        <div class="bg-white p-5 rounded-xl border border-outline-variant shadow-sm">
-            <h3 class="font-bold text-on-surface mb-3">Últimos Movimientos de Stock</h3>
-            <div class="space-y-3 text-xs">
+        <div class="bg-white p-5 rounded-2xl shadow-card">
+            <h3 class="text-lg font-bold text-on-surface mb-3">Movimientos recientes</h3>
+            <div class="space-y-3 text-sm">
                 {% for m in ultimos_movimientos %}
-                <div class="flex items-start justify-between gap-2 pb-2 border-b border-outline-variant/50">
+                <div class="flex items-start justify-between gap-2 pb-3 border-b border-outline-variant/40 last:border-0 last:pb-0">
                     <div>
-                        <p class="font-semibold text-on-surface">{{ m.producto.nombre if m.producto else 'Producto' }} ({{ m.cantidad }} u.)</p>
-                        <p class="text-on-surface-variant">{{ m.origen }} → {{ m.destino }}</p>
+                        <p class="font-semibold text-on-surface">{{ m.producto.nombre if m.producto else 'Producto' }} <span class="text-on-surface-variant font-normal">({{ m.cantidad }} u.)</span></p>
+                        <p class="text-xs text-on-surface-variant mt-0.5">De {{ m.origen }} a {{ m.destino }}</p>
                     </div>
-                    <span class="font-label-sm px-2 py-0.5 rounded bg-surface-container-high text-primary font-bold">{{ m.tipo }}</span>
+                    <span class="text-xs px-2.5 py-1 rounded-full bg-surface-container text-primary font-semibold whitespace-nowrap">{{ m.tipo }}</span>
                 </div>
+                {% else %}
+                <p class="text-on-surface-variant">Todavía no hay movimientos.</p>
                 {% endfor %}
             </div>
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    (function () {
+        var el = document.getElementById('fecha-hoy');
+        if (!el) return;
+        var t = new Date().toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' });
+        el.textContent = t.charAt(0).toUpperCase() + t.slice(1);
+    })();
+</script>
 {% endblock %}

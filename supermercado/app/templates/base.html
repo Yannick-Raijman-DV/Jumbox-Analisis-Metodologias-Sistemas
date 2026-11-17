@@ -3,6 +3,7 @@
 <head>
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/logo.png') }}"/>
     <title>{% block title %}JUMBOX SaaS - Gestión de Supermercados{% endblock %}</title>
 
     <!-- Material Symbols -->
@@ -68,6 +69,9 @@
                         "on-error-container": "#93000a",
                         "on-secondary-container": "#00714d"
                     },
+                    boxShadow: {
+                        "card": "0 1px 2px rgba(0,55,94,.05), 0 6px 20px rgba(0,55,94,.06)"
+                    },
                     spacing: {
                         "sidebar-width": "260px",
                         "gutter": "24px"
@@ -93,38 +97,35 @@
     {% include "partials/_sidebar.html" %}
 
     <div class="md:pl-sidebar-width flex flex-col min-h-screen transition-all duration-300">
-        <!-- TopNavBar -->
-        <header class="h-16 w-full sticky top-0 z-40 bg-surface border-b border-outline-variant flex justify-between items-center px-4 md:px-gutter no-print" id="top-nav">
-            <div class="flex items-center gap-3 shrink-0">
-                <button class="md:hidden p-2 text-primary hover:bg-surface-container-high rounded-full transition-colors" id="mobile-menu-btn" title="Abrir menú" type="button">
-                    <span class="material-symbols-outlined">menu</span>
-                </button>
-                <div class="hidden md:flex font-headline-md text-primary font-bold whitespace-nowrap">
-                    JUMBOX SaaS
-                </div>
-            </div>
+        <!-- Barra superior -->
+        <header class="h-16 w-full sticky top-0 z-40 bg-surface/85 backdrop-blur border-b border-outline-variant/60 flex items-center gap-4 px-4 md:px-gutter no-print" id="top-nav">
+            <button class="md:hidden p-2 -ml-2 text-primary hover:bg-surface-container-high rounded-full transition-colors" id="mobile-menu-btn" title="Abrir menú" type="button">
+                <span class="material-symbols-outlined">menu</span>
+            </button>
+            <span class="md:hidden text-lg font-bold text-primary">Jumbox</span>
 
-            <form action="{{ url_for('main.buscador') }}" method="get" class="flex-1 max-w-xl px-4 hidden md:block">
+            <form action="{{ url_for('main.buscador') }}" method="get" class="flex-1 max-w-xl hidden md:block">
                 <div class="relative">
-                    <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none">search</span>
-                    <input id="global-search-input" name="q" value="{{ request.args.get('q', '') }}" class="w-full pl-10 pr-4 py-2 bg-surface-container-low border border-outline-variant rounded-full text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all placeholder:text-on-surface-variant/70" placeholder="Buscar productos, códigos de barra, clientes, proveedores... (Cmd+K)" type="text"/>
+                    <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none text-[20px]">search</span>
+                    <input id="global-search-input" name="q" value="{{ request.args.get('q', '') }}" class="w-full pl-11 pr-16 py-2.5 bg-surface-container-lowest border border-outline-variant/70 rounded-full text-sm focus:border-primary focus:ring-2 focus:ring-primary/15 outline-none transition-all placeholder:text-on-surface-variant/70" placeholder="Buscar productos, clientes o proveedores" type="text"/>
+                    <kbd id="search-hint" class="absolute right-3.5 top-1/2 -translate-y-1/2 text-[11px] text-on-surface-variant/80 bg-surface-container-low border border-outline-variant/70 rounded-md px-1.5 py-0.5 font-label-sm pointer-events-none">Ctrl K</kbd>
                 </div>
             </form>
 
-            <div class="flex items-center gap-3 shrink-0">
-                <span class="hidden lg:inline-flex items-center gap-1.5 px-3 py-1 rounded-full font-label-sm text-xs font-semibold {% if usa_s3 %}bg-secondary-container text-on-secondary-container{% else %}bg-surface-container-high text-on-surface-variant{% endif %}" title="Almacenamiento de imágenes y comprobantes">
-                    <span class="material-symbols-outlined text-[16px]">cloud_done</span>
-                    <span>{% if usa_s3 %}AWS S3 Activo{% else %}Storage Local{% endif %}</span>
+            <div class="ml-auto flex items-center gap-2 shrink-0">
+                <span class="hidden lg:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold {% if usa_s3 %}bg-secondary-container/60 text-on-secondary-fixed{% else %}bg-surface-container text-on-surface-variant{% endif %}" title="Dónde se guardan las fotos y comprobantes">
+                    <span class="material-symbols-outlined text-[16px]">{% if usa_s3 %}cloud_done{% else %}cloud_off{% endif %}</span>
+                    <span>{% if usa_s3 %}Fotos en la nube{% else %}Fotos en este equipo{% endif %}</span>
                 </span>
 
-                <a href="{{ url_for('ia.reposicion') }}" class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full font-label-sm text-xs font-semibold {% if estado_llm.habilitada %}bg-primary-container text-white{% else %}bg-surface-container-high text-on-surface-variant{% endif %}" title="Estado del asistente de reposición">
-                    <span class="material-symbols-outlined text-[16px]">psychology</span>
-                    <span>{% if estado_llm.habilitada %}LLM Activa{% else %}IA (Reglas){% endif %}</span>
+                <a href="{{ url_for('ia.reposicion') }}" class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors {% if estado_llm.habilitada %}bg-primary text-white hover:bg-primary-container{% else %}bg-surface-container text-on-surface-variant hover:bg-surface-container-high{% endif %}" title="Asistente de reposición">
+                    <span class="material-symbols-outlined text-[16px]">auto_awesome</span>
+                    <span>{% if estado_llm.habilitada %}Asistente IA activo{% else %}Asistente básico{% endif %}</span>
                 </a>
             </div>
         </header>
 
-        <main class="p-4 md:p-gutter flex-1">
+        <main class="p-4 md:p-gutter flex-1 w-full max-w-[1400px] mx-auto">
             {% include "partials/_flash.html" %}
             {% block content %}{% endblock %}
         </main>
@@ -138,6 +139,8 @@
         const mobileBtn = document.getElementById('mobile-menu-btn');
         const closeBtn = document.getElementById('close-sidebar-btn');
         const searchInput = document.getElementById('global-search-input');
+        const hint = document.getElementById('search-hint');
+        if (hint && /Mac|iPhone|iPad/.test(navigator.platform)) hint.textContent = '⌘K';
 
         function toggleSidebar() {
             sidebar.classList.toggle('-translate-x-full');

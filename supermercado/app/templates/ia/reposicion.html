@@ -3,7 +3,7 @@
 {% block content %}
 <div class="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
     <div>
-        <h2 class="text-2xl font-bold text-on-surface flex items-center gap-2">
+        <h2 class="text-3xl font-bold text-primary tracking-tight flex items-center gap-2">
             <span class="material-symbols-outlined text-primary text-3xl">psychology</span>
             <span>Asistente de Reposición con IA Local</span>
         </h2>
@@ -55,10 +55,10 @@
 <!-- Órdenes sugeridas por proveedor en 1 clic -->
 {% if pedidos_por_proveedor %}
 <div class="mb-6">
-    <h3 class="font-bold text-lg mb-3">Generar Órdenes de Compra Sugeridas (1 clic)</h3>
+    <h3 class="font-bold text-lg mb-3">Armar los pedidos sugeridos</h3>
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         {% for grupo in pedidos_por_proveedor %}
-        <div class="bg-white p-5 rounded-xl border border-outline-variant shadow-sm flex flex-col justify-between">
+        <div class="bg-white p-5 rounded-2xl shadow-card flex flex-col justify-between">
             <div>
                 <div class="flex justify-between items-center mb-2">
                     <h4 class="font-bold text-primary">{{ grupo.proveedor }}</h4>
@@ -83,14 +83,14 @@
 {% endif %}
 
 <!-- Tabla detallada de candidatos -->
-<div class="bg-white rounded-xl border border-outline-variant shadow-sm overflow-hidden">
+<div class="bg-white rounded-2xl shadow-card overflow-hidden">
     <div class="p-4 border-b border-outline-variant">
-        <h3 class="font-bold">Detalle Técnico Analizado ({{ candidatos|length }} ítems)</h3>
+        <h3 class="font-bold">Productos analizados ({{ candidatos|length }} ítems)</h3>
     </div>
     <div class="overflow-x-auto">
         <table class="w-full text-left border-collapse text-sm">
             <thead>
-                <tr class="bg-surface-container-low text-on-surface-variant font-label-md text-xs uppercase border-b border-outline-variant">
+                <tr class="bg-surface-container-low/70 text-on-surface-variant text-xs">
                     <th class="p-3.5">Prioridad</th>
                     <th class="p-3.5">Producto</th>
                     <th class="p-3.5">Proveedor</th>

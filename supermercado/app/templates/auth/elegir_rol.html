@@ -3,46 +3,50 @@
 <head>
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-    <title>JUMBOX - Elegir Rol</title>
+    <title>JUMBOX - Elegí tu puesto</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/logo.png') }}"/>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
     <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+    <style>:focus-visible { outline: 2px solid #10b981; outline-offset: 2px; }</style>
 </head>
-<body class="min-h-screen bg-[#00375e] flex items-center justify-center p-4 font-['Hanken_Grotesk',sans-serif]">
-    <div class="w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden p-6 space-y-5">
+<body class="min-h-screen bg-[#f8f9ff] flex items-center justify-center p-4 font-['Hanken_Grotesk',sans-serif] text-[#0b1c30] antialiased">
+    <div class="w-full max-w-md bg-white rounded-2xl shadow-[0_6px_30px_rgba(0,55,94,.10)] p-8 space-y-6">
         <div class="flex items-center gap-3">
             {% if pendiente.foto %}
-            <img src="{{ pendiente.foto }}" alt="" class="w-12 h-12 rounded-full border"/>
+            <img src="{{ pendiente.foto }}" alt="" class="w-12 h-12 rounded-full"/>
+            {% else %}
+            <div class="w-12 h-12 bg-[#eff4ff] rounded-xl p-1.5"><img src="{{ url_for('static', filename='img/logo.png') }}" alt="Jumbox" class="w-full h-full object-contain"/></div>
             {% endif %}
             <div>
-                <h1 class="text-lg font-bold text-slate-900">Completá tu registro con Google</h1>
-                <p class="text-xs text-slate-500">{{ pendiente.nombre }} ({{ pendiente.email }})</p>
+                <h1 class="text-xl font-bold text-[#00375e]">Un último paso</h1>
+                <p class="text-sm text-[#42474f]">{{ pendiente.nombre }} · {{ pendiente.email }}</p>
             </div>
         </div>
 
         {% include "partials/_flash.html" %}
 
-        <p class="text-sm text-slate-600">Elegí el puesto con el que vas a operar en la sucursal:</p>
+        <p class="text-[#42474f]">Elegí el puesto con el que vas a trabajar en la sucursal.</p>
 
         <form method="post" class="space-y-3">
-            <label class="flex items-start gap-3 p-4 rounded-xl border border-slate-300 hover:border-[#00375e] cursor-pointer">
-                <input type="radio" name="rol" value="Cajero" checked class="mt-1 text-[#00375e] focus:ring-[#00375e]"/>
+            <label class="flex items-start gap-3 p-4 rounded-xl border border-[#c2c7d0] hover:border-[#00375e] has-[:checked]:border-[#006c49] has-[:checked]:bg-[#10b981]/10 cursor-pointer transition-colors">
+                <input type="radio" name="rol" value="Cajero" checked class="mt-1 text-[#006c49] focus:ring-[#006c49]"/>
                 <div>
-                    <p class="font-bold text-slate-900">Cajero (Punto de Venta y Clientes)</p>
-                    <p class="text-xs text-slate-500">Acceso a facturación POS, tickets, envíos y fidelización de clientes.</p>
+                    <p class="font-bold">Cajero</p>
+                    <p class="text-sm text-[#42474f]">Cobra en caja, emite tickets, atiende clientes y ve los envíos.</p>
                 </div>
             </label>
 
-            <label class="flex items-start gap-3 p-4 rounded-xl border border-slate-300 hover:border-[#00375e] cursor-pointer">
-                <input type="radio" name="rol" value="Operario" class="mt-1 text-[#00375e] focus:ring-[#00375e]"/>
+            <label class="flex items-start gap-3 p-4 rounded-xl border border-[#c2c7d0] hover:border-[#00375e] has-[:checked]:border-[#006c49] has-[:checked]:bg-[#10b981]/10 cursor-pointer transition-colors">
+                <input type="radio" name="rol" value="Operario" class="mt-1 text-[#006c49] focus:ring-[#006c49]"/>
                 <div>
-                    <p class="font-bold text-slate-900">Operario (Stock, Depósito, Proveedores e IA)</p>
-                    <p class="text-xs text-slate-500">Acceso a inventario por vencimiento, mermas, traslados, proveedores y reposición IA.</p>
+                    <p class="font-bold">Operario</p>
+                    <p class="text-sm text-[#42474f]">Maneja inventario, mermas, proveedores y los pedidos sugeridos.</p>
                 </div>
             </label>
 
-            <button type="submit" class="w-full bg-[#006c49] hover:bg-[#10b981] text-white font-semibold py-2.5 rounded-xl transition-colors">
-                Confirmar Rol y Entrar
+            <button type="submit" class="w-full bg-[#006c49] hover:bg-[#10b981] text-white font-bold py-3 rounded-xl transition-colors">
+                Continuar
             </button>
         </form>
     </div>

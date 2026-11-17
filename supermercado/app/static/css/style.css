@@ -47,3 +47,48 @@
         display: none !important;
     }
 }
+
+/* 4. Retoques de estilo (Jumbox) ------------------------------------------ */
+html { scroll-behavior: smooth; }
+
+body {
+    background-image: radial-gradient(1200px 400px at 100% -10%, rgba(160, 202, 252, 0.22), transparent 60%);
+    background-attachment: fixed;
+}
+
+/* Foco visible para teclado */
+:focus-visible {
+    outline: 2px solid #10b981;
+    outline-offset: 2px;
+}
+
+/* Tablas más aireadas y legibles */
+table thead th {
+    font-weight: 600;
+    letter-spacing: 0;
+    text-transform: none;
+}
+table tbody tr { transition: background-color .15s ease; }
+table tbody tr:hover { background-color: rgba(229, 238, 255, 0.45); }
+
+/* Números de precios y códigos con cifras tabulares */
+.font-label-md, .font-label-sm { font-variant-numeric: tabular-nums; }
+
+/* Entrada suave solo al cargar la página (un único momento) */
+@keyframes jbx-rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+main > * { animation: jbx-rise .35s ease-out both; }
+
+@media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    main > * { animation: none; }
+    * { transition-duration: .01ms !important; }
+}
+
+/* 5. Impresión del ticket: solo el papel, sin sombras ni fondo ------------- */
+@media print {
+    body { background: #fff !important; background-image: none !important; }
+    .md\:pl-sidebar-width { padding-left: 0 !important; }
+    main { padding: 0 !important; max-width: none !important; }
+    .ticket-papel { box-shadow: none !important; border-radius: 0 !important; max-width: 80mm !important; padding: 4mm !important; }
+    main > * { animation: none !important; }
+}

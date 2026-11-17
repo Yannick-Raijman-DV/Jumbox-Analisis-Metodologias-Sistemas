@@ -1,36 +1,37 @@
 {% extends "base.html" %}
-{% block title %}JUMBOX - Punto de Venta (POS){% endblock %}
+{% block title %}JUMBOX - Caja{% endblock %}
 {% block content %}
-<div class="mb-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+<div class="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-3">
     <div>
-        <h2 class="text-2xl font-bold text-on-surface">Punto de Venta (POS)</h2>
-        <p class="text-sm text-on-surface-variant">Terminal split-screen 60/40 con lector de códigos de barra, fidelización y despacho a domicilio.</p>
+        <h2 class="text-3xl font-bold text-primary tracking-tight">Caja</h2>
+        <p class="text-base text-on-surface-variant mt-1">Escaneá o elegí los productos y cobrá en un paso.</p>
     </div>
-    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-label-sm font-bold bg-secondary-container text-on-secondary-container">
+    <span class="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold bg-secondary-container/60 text-on-secondary-fixed">
         <span class="w-2 h-2 rounded-full bg-secondary"></span>
-        Caja Activa • {{ current_user.nombre }}
+        Caja abierta · {{ current_user.nombre }}
     </span>
 </div>
 
 <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-    <!-- Catálogo 60% (7 cols) -->
+    <!-- Catálogo -->
     <div class="lg:col-span-7 space-y-4">
-        <div class="bg-white p-4 rounded-xl border border-outline-variant shadow-sm space-y-3">
+        <div class="bg-white p-4 rounded-2xl shadow-card space-y-3">
             <div class="relative">
-                <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">barcode_scanner</span>
-                <input id="pos-buscar" type="text" autofocus placeholder="Escanear código de barras o buscar producto (Enter agrega directo)..." class="w-full pl-10 pr-4 py-2.5 rounded-xl border-outline-variant text-sm font-label-sm"/>
+                <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant">barcode_scanner</span>
+                <input id="pos-buscar" type="text" autofocus placeholder="Escaneá el código o escribí el nombre del producto" class="w-full pl-12 pr-4 py-3 rounded-full border-outline-variant/70 bg-surface-container-lowest text-sm focus:border-primary focus:ring-primary/20"/>
             </div>
             <div class="flex flex-wrap gap-2">
-                <button type="button" data-cat="todas" class="pos-cat-btn activo px-3 py-1 rounded-lg text-xs font-semibold bg-primary text-white">Todas</button>
+                <button type="button" data-cat="todas" class="pos-cat-btn activo px-4 py-1.5 rounded-full text-sm font-semibold bg-primary text-white">Todas</button>
                 {% for cat in categorias %}
-                <button type="button" data-cat="{{ cat.id }}" class="pos-cat-btn px-3 py-1 rounded-lg text-xs font-semibold bg-surface-container-low text-on-surface">{{ cat.nombre }}</button>
+                <button type="button" data-cat="{{ cat.id }}" class="pos-cat-btn px-4 py-1.5 rounded-full text-sm font-semibold bg-surface-container-low text-on-surface">{{ cat.nombre }}</button>
                 {% endfor %}
             </div>
         </div>
 
-        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
             {% for p in productos %}
             {% set vencido = (p.estado_vencimiento == 'vencido') %}
+            {% set por_vencer = (p.estado_vencimiento == 'por_vencer') %}
             <button type="button"
                 data-id="{{ p.id }}"
                 data-nombre="{{ p.nombre }}"
@@ -39,26 +40,29 @@
                 data-stock="{{ p.stock_gondola }}"
                 data-categoria="{{ p.categoria_id }}"
                 data-vencido="{{ '1' if vencido else '0' }}"
-                class="pos-producto-card text-left bg-white p-3.5 rounded-xl border transition-all shadow-sm hover:shadow-md flex flex-col justify-between
-                {% if vencido %}border-error/60 opacity-60{% else %}border-outline-variant hover:border-primary{% endif %}">
+                class="pos-producto-card text-left bg-white p-3 rounded-2xl shadow-card flex flex-col justify-between ring-1 transition-shadow hover:ring-2
+                {% if vencido %}ring-error/40 opacity-60{% elif por_vencer %}ring-[#f59e0b]/50 hover:ring-[#f59e0b]{% else %}ring-transparent hover:ring-secondary{% endif %}">
                 <div>
-                    <div class="w-full h-24 rounded-lg bg-surface-container-low mb-2.5 flex items-center justify-center overflow-hidden border border-outline-variant/40">
+                    <div class="relative w-full h-28 rounded-xl bg-surface-container-low mb-3 flex items-center justify-center overflow-hidden">
                         {% if p.foto_key and url_imagen(p.foto_key) %}
                         <img src="{{ url_imagen(p.foto_key) }}" alt="{{ p.nombre }}" class="w-full h-full object-contain"/>
                         {% else %}
-                        <span class="material-symbols-outlined text-3xl text-on-surface-variant">shopping_bag</span>
+                        <span class="material-symbols-outlined text-4xl text-on-surface-variant/60">shopping_bag</span>
+                        {% endif %}
+                        {% if vencido %}
+                        <span class="absolute top-2 left-2 inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-error-container text-error"><span class="w-1.5 h-1.5 rounded-full bg-[#ef4444]"></span>Vencido</span>
+                        {% elif por_vencer %}
+                        <span class="absolute top-2 left-2 inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-[#f59e0b]/25 text-[#6c4300]"><span class="w-1.5 h-1.5 rounded-full bg-[#f59e0b]"></span>Vence pronto</span>
                         {% endif %}
                     </div>
-                    <p class="font-bold text-sm text-on-surface truncate">{{ p.nombre }}</p>
-                    <p class="font-label-sm text-[11px] text-on-surface-variant">{{ p.sku }}</p>
+                    <p class="font-semibold text-[15px] text-on-surface leading-snug line-clamp-2">{{ p.nombre }}</p>
+                    <p class="font-label-sm text-[11px] text-on-surface-variant mt-0.5">{{ p.sku }}</p>
                 </div>
-                <div class="mt-3 pt-2 border-t border-outline-variant/50 flex items-center justify-between">
-                    <span class="font-label-md font-bold text-primary text-base">${{ "%.2f"|format(p.precio) }}</span>
-                    {% if vencido %}
-                    <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-error-container text-error">VENCIDO</span>
-                    {% else %}
-                    <span class="text-[11px] font-label-sm {% if p.stock_gondola <= p.stock_minimo %}text-error font-bold{% else %}text-on-surface-variant{% endif %}">
-                        Gónd: {{ p.stock_gondola }}
+                <div class="mt-3 flex items-end justify-between">
+                    <span class="font-label-md font-bold text-primary text-lg">${{ "%.2f"|format(p.precio) }}</span>
+                    {% if not vencido %}
+                    <span class="text-xs {% if p.stock_gondola <= p.stock_minimo %}text-error font-semibold{% else %}text-on-surface-variant{% endif %}">
+                        {% if p.stock_gondola <= 0 %}Sin stock{% else %}{{ p.stock_gondola }} en góndola{% endif %}
                     </span>
                     {% endif %}
                 </div>
@@ -67,29 +71,30 @@
         </div>
     </div>
 
-    <!-- Ticket 40% (5 cols) -->
-    <div class="lg:col-span-5 bg-white p-5 rounded-xl border border-outline-variant shadow-md sticky top-20">
-        <div class="flex items-center justify-between pb-3 mb-3 border-b border-outline-variant">
-            <h3 class="font-bold text-lg text-on-surface flex items-center gap-2">
+    <!-- Ticket -->
+    <div class="lg:col-span-5 bg-white p-6 rounded-2xl shadow-card lg:sticky lg:top-20">
+        <div class="flex items-center justify-between pb-4 mb-4 border-b border-outline-variant/50">
+            <h3 class="font-bold text-xl text-on-surface flex items-center gap-2">
                 <span class="material-symbols-outlined text-primary">receipt_long</span>
-                <span>Ticket Actual</span>
+                <span>Ticket</span>
             </h3>
-            <button type="button" id="pos-btn-vaciar" class="text-xs text-error hover:underline font-semibold">Vaciar</button>
+            <button type="button" id="pos-btn-vaciar" class="text-sm text-error hover:underline font-semibold">Vaciar</button>
         </div>
 
         <div id="pos-alerta" class="hidden"></div>
 
-        <div id="pos-ticket-empty" class="py-8 text-center text-on-surface-variant text-sm">
-            Seleccioná o escaneá productos del catálogo para armar el ticket.
+        <div id="pos-ticket-empty" class="py-10 text-center text-on-surface-variant text-sm">
+            <span class="material-symbols-outlined text-4xl text-outline-variant block mb-2">add_shopping_cart</span>
+            Todavía no hay productos. Tocá uno del catálogo o escaneá su código.
         </div>
 
         <div id="pos-ticket-items" class="space-y-2 max-h-64 overflow-y-auto table-scroll mb-4"></div>
 
-        <div class="space-y-3 pt-3 border-t border-outline-variant text-sm">
+        <div class="space-y-4 pt-4 border-t border-outline-variant/50 text-sm">
             <div>
-                <label class="block text-xs font-semibold uppercase text-on-surface-variant mb-1">Cliente (suma 1 punto cada $100)</label>
-                <select id="pos-cliente" class="w-full rounded-xl border-outline-variant text-sm">
-                    <option value="">Consumidor Final</option>
+                <label for="pos-cliente" class="block text-sm font-semibold text-on-surface mb-1.5">Cliente <span class="font-normal text-on-surface-variant">· suma 1 punto cada $100</span></label>
+                <select id="pos-cliente" class="w-full rounded-xl border-outline-variant/70 text-sm">
+                    <option value="">Consumidor final</option>
                     {% for c in clientes %}
                     <option value="{{ c.id }}" data-direccion="{{ c.direccion or '' }}" data-telefono="{{ c.telefono or '' }}">
                         {{ c.nombre_completo }} — DNI {{ c.dni }} ({{ c.puntos }} pts)
@@ -99,37 +104,37 @@
             </div>
 
             <div>
-                <label class="block text-xs font-semibold uppercase text-on-surface-variant mb-1">Medio de Pago</label>
-                <select id="pos-metodo-pago" class="w-full rounded-xl border-outline-variant text-sm">
+                <label for="pos-metodo-pago" class="block text-sm font-semibold text-on-surface mb-1.5">Medio de pago</label>
+                <select id="pos-metodo-pago" class="w-full rounded-xl border-outline-variant/70 text-sm">
                     {% for mp in metodos_pago %}
                     <option value="{{ mp }}">{{ mp }}</option>
                     {% endfor %}
                 </select>
             </div>
 
-            <label class="flex items-center gap-2 pt-1 cursor-pointer">
-                <input type="checkbox" id="pos-con-envio" class="rounded text-primary focus:ring-primary"/>
-                <span class="font-semibold text-on-surface">Despachar con envío a domicilio</span>
+            <label class="flex items-center gap-2.5 cursor-pointer">
+                <input type="checkbox" id="pos-con-envio" class="rounded text-secondary focus:ring-secondary"/>
+                <span class="font-semibold text-on-surface">Enviar a domicilio</span>
             </label>
 
-            <div id="pos-panel-envio" class="hidden space-y-2 p-3 rounded-xl bg-surface-container-low border border-outline-variant">
-                <input type="text" id="pos-envio-direccion" placeholder="Dirección de entrega *" class="w-full rounded-lg border-outline-variant text-xs"/>
-                <input type="text" id="pos-envio-telefono" placeholder="Teléfono de contacto" class="w-full rounded-lg border-outline-variant text-xs"/>
-                <input type="text" id="pos-envio-obs" placeholder="Observaciones (piso, timbre, horario)" class="w-full rounded-lg border-outline-variant text-xs"/>
+            <div id="pos-panel-envio" class="hidden space-y-2 p-3 rounded-xl bg-surface-container-low">
+                <input type="text" id="pos-envio-direccion" placeholder="Dirección de entrega (obligatoria)" class="w-full rounded-lg border-outline-variant/70 text-sm"/>
+                <input type="text" id="pos-envio-telefono" placeholder="Teléfono de contacto" class="w-full rounded-lg border-outline-variant/70 text-sm"/>
+                <input type="text" id="pos-envio-obs" placeholder="Piso, timbre u horario" class="w-full rounded-lg border-outline-variant/70 text-sm"/>
             </div>
 
-            <div class="pt-3 border-t border-outline-variant space-y-1">
-                <div class="flex justify-between text-xs text-on-surface-variant">
+            <div class="pt-4 border-t border-outline-variant/50 space-y-1.5">
+                <div class="flex justify-between text-sm text-on-surface-variant">
                     <span>Subtotal</span>
                     <span id="pos-subtotal" class="font-label-sm">$0.00</span>
                 </div>
-                <div class="flex justify-between text-xs text-secondary font-semibold">
-                    <span>Puntos fidelización</span>
+                <div class="flex justify-between text-sm text-secondary font-semibold">
+                    <span>Puntos para el cliente</span>
                     <span id="pos-puntos" class="font-label-sm">+0 pts</span>
                 </div>
-                <div class="flex justify-between text-xl font-bold text-on-surface pt-1">
-                    <span>Total a Cobrar</span>
-                    <span id="pos-total" class="font-label-md text-primary">$0.00</span>
+                <div class="flex justify-between items-baseline pt-2">
+                    <span class="text-lg font-bold text-on-surface">Total</span>
+                    <span id="pos-total" class="font-label-md text-3xl font-bold text-primary">$0.00</span>
                 </div>
                 <div class="flex justify-between text-xs text-on-surface-variant">
                     <span id="pos-dolar-info" data-url="{{ url_for('pos.api_dolar') }}">Dólar: consultando…</span>
@@ -138,9 +143,9 @@
             </div>
 
             <button type="button" id="pos-btn-cobrar" data-url="{{ url_for('pos.api_registrar_venta') }}" disabled
-                class="w-full bg-[#006c49] hover:bg-[#10b981] disabled:opacity-40 text-white font-bold py-3.5 rounded-xl transition-all shadow-sm flex items-center justify-center gap-2">
+                class="w-full bg-secondary hover:bg-[#10b981] disabled:opacity-40 disabled:hover:bg-secondary text-white text-base font-bold py-4 rounded-2xl transition-colors shadow-lg shadow-secondary/20 flex items-center justify-center gap-2">
                 <span class="material-symbols-outlined">check_circle</span>
-                <span>Confirmar Cobro y Emitir Ticket</span>
+                <span>Cobrar y emitir ticket</span>
             </button>
         </div>
     </div>

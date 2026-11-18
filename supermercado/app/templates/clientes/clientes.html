@@ -40,36 +40,137 @@
         </form>
     </div>
 
-    <div class="lg:col-span-2 bg-white rounded-2xl shadow-card overflow-hidden">
-        <table class="w-full text-left border-collapse text-sm">
-            <thead>
-                <tr class="bg-surface-container-low/70 text-on-surface-variant text-xs">
-                    <th class="p-4">Cliente</th>
-                    <th class="p-4">DNI</th>
-                    <th class="p-4">Dirección / Teléfono</th>
-                    <th class="p-4 text-right">Compras</th>
-                    <th class="p-4 text-right">Puntos</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for c in clientes %}
-                <tr class="border-b border-outline-variant/60">
-                    <td class="p-4 font-bold">{{ c.nombre_completo }}</td>
-                    <td class="p-4 font-label-md text-xs">{{ c.dni }}</td>
-                    <td class="p-4 text-xs text-on-surface-variant">
-                        {{ c.direccion or 'Sin dirección' }}
-                        {% if c.telefono %} • {{ c.telefono }}{% endif %}
-                    </td>
-                    <td class="p-4 text-right font-label-sm text-xs">${{ "%.2f"|format(c.total_comprado) }} ({{ c.ventas|length }})</td>
-                    <td class="p-4 text-right">
-                        <span class="px-2.5 py-1 rounded-full font-label-md text-xs font-bold bg-secondary-container text-on-secondary-container">
-                            {{ c.puntos }} pts
-                        </span>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+    <div class="lg:col-span-2 space-y-4">
+        <form method="get" action="{{ url_for('clientes.index') }}" class="bg-white p-3 rounded-2xl shadow-card flex flex-wrap gap-2 items-center">
+            <div class="relative flex-1 min-w-[200px]">
+                <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]">search</span>
+                <input type="text" name="q" value="{{ q or '' }}" placeholder="Buscar por nombre, apellido o DNI..." class="w-full pl-9 pr-3 py-2 rounded-xl border-outline-variant text-sm"/>
+            </div>
+            <button type="submit" class="bg-primary text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-primary-container">Buscar</button>
+            {% if q %}
+            <a href="{{ url_for('clientes.index') }}" class="px-3 py-2 rounded-xl border border-outline-variant text-xs font-semibold hover:bg-surface-container-low">Limpiar</a>
+            {% endif %}
+        </form>
+
+        <div class="bg-white rounded-2xl shadow-card overflow-hidden">
+            <table class="w-full text-left border-collapse text-sm">
+                <thead>
+                    <tr class="bg-surface-container-low/70 text-on-surface-variant text-xs">
+                        <th class="p-4">Cliente</th>
+                        <th class="p-4">DNI</th>
+                        <th class="p-4">Dirección / Teléfono</th>
+                        <th class="p-4 text-right">Compras</th>
+                        <th class="p-4 text-right">Puntos</th>
+                        <th class="p-4 text-right">Acción</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for c in clientes %}
+                    <tr class="border-b border-outline-variant/60">
+                        <td class="p-4 font-bold">{{ c.nombre_completo }}</td>
+                        <td class="p-4 font-label-md text-xs">{{ c.dni }}</td>
+                        <td class="p-4 text-xs text-on-surface-variant">
+                            {{ c.direccion or 'Sin dirección' }}
+                            {% if c.telefono %} • {{ c.telefono }}{% endif %}
+                        </td>
+                        <td class="p-4 text-right font-label-sm text-xs">${{ "%.2f"|format(c.total_comprado) }} ({{ c.ventas|length }})</td>
+                        <td class="p-4 text-right">
+                            <span class="px-2.5 py-1 rounded-full font-label-md text-xs font-bold bg-secondary-container text-on-secondary-container">
+                                {{ c.puntos }} pts
+                            </span>
+                        </td>
+                        <td class="p-4 text-right">
+                            <button type="button"
+                                class="btn-editar-cliente text-xs font-semibold text-primary hover:underline"
+                                data-action="{{ url_for('clientes.editar', cliente_id=c.id) }}"
+                                data-nombre="{{ c.nombre }}"
+                                data-apellido="{{ c.apellido }}"
+                                data-dni="{{ c.dni }}"
+                                data-telefono="{{ c.telefono or '' }}"
+                                data-direccion="{{ c.direccion or '' }}">
+                                Editar
+                            </button>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="6" class="p-6 text-center text-on-surface-variant text-sm">No se encontraron clientes.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
+
+<dialog id="modal-editar-cliente" class="rounded-2xl p-0 border-0 shadow-xl w-full max-w-md backdrop:bg-on-surface/50">
+    <div class="bg-white p-6 space-y-4">
+        <div class="flex items-center justify-between">
+            <h3 class="font-bold text-lg text-on-surface">Editar cliente</h3>
+            <button type="button" id="btn-cerrar-modal-cliente" class="text-on-surface-variant hover:text-on-surface">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+        </div>
+        <form id="form-editar-cliente" method="post" class="space-y-3 text-sm">
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label for="edit-cliente-nombre" class="block text-sm font-semibold mb-1">Nombre *</label>
+                    <input id="edit-cliente-nombre" type="text" name="nombre" required class="w-full rounded-xl border-outline-variant text-sm"/>
+                </div>
+                <div>
+                    <label for="edit-cliente-apellido" class="block text-sm font-semibold mb-1">Apellido *</label>
+                    <input id="edit-cliente-apellido" type="text" name="apellido" required class="w-full rounded-xl border-outline-variant text-sm"/>
+                </div>
+            </div>
+            <div>
+                <label for="edit-cliente-dni" class="block text-sm font-semibold mb-1">DNI *</label>
+                <input id="edit-cliente-dni" type="text" name="dni" required class="w-full rounded-xl border-outline-variant text-sm font-label-sm"/>
+            </div>
+            <div>
+                <label for="edit-cliente-telefono" class="block text-sm font-semibold mb-1">Teléfono</label>
+                <input id="edit-cliente-telefono" type="text" name="telefono" class="w-full rounded-xl border-outline-variant text-sm"/>
+            </div>
+            <div>
+                <label for="edit-cliente-direccion" class="block text-sm font-semibold mb-1">Dirección (para envíos)</label>
+                <input id="edit-cliente-direccion" type="text" name="direccion" class="w-full rounded-xl border-outline-variant text-sm"/>
+            </div>
+            <div class="flex justify-end gap-2 pt-2">
+                <button type="button" id="btn-cancelar-modal-cliente" class="px-4 py-2 rounded-xl border border-outline-variant text-sm font-semibold">Cancelar</button>
+                <button type="submit" class="bg-primary text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-primary-container">Guardar cambios</button>
+            </div>
+        </form>
+    </div>
+</dialog>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+(() => {
+    const modal = document.getElementById("modal-editar-cliente");
+    const form = document.getElementById("form-editar-cliente");
+    if (!modal || !form) return;
+
+    const campos = {
+        nombre: document.getElementById("edit-cliente-nombre"),
+        apellido: document.getElementById("edit-cliente-apellido"),
+        dni: document.getElementById("edit-cliente-dni"),
+        telefono: document.getElementById("edit-cliente-telefono"),
+        direccion: document.getElementById("edit-cliente-direccion"),
+    };
+
+    document.querySelectorAll(".btn-editar-cliente").forEach((btn) => {
+        btn.addEventListener("click", () => {
+            form.action = btn.dataset.action;
+            campos.nombre.value = btn.dataset.nombre || "";
+            campos.apellido.value = btn.dataset.apellido || "";
+            campos.dni.value = btn.dataset.dni || "";
+            campos.telefono.value = btn.dataset.telefono || "";
+            campos.direccion.value = btn.dataset.direccion || "";
+            modal.showModal();
+        });
+    });
+
+    const cerrar = () => modal.close();
+    document.getElementById("btn-cerrar-modal-cliente")?.addEventListener("click", cerrar);
+    document.getElementById("btn-cancelar-modal-cliente")?.addEventListener("click", cerrar);
+    modal.addEventListener("click", (ev) => { if (ev.target === modal) cerrar(); });
+})();
+</script>
 {% endblock %}

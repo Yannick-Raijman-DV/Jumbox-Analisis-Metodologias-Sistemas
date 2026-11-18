@@ -215,9 +215,20 @@ def mermas():
         except ErrorNegocio as err:
             flash(str(err), "error")
 
+    producto_sel_id = request.args.get("producto_id", type=int) or request.form.get("producto_id", type=int)
+    producto_sel = db.session.get(Producto, producto_sel_id) if producto_sel_id else None
+    cantidad_sugerida = producto_sel.stock_gondola if (producto_sel and producto_sel.stock_gondola > 0) else 1
+
     bajas = BajaProducto.query.order_by(BajaProducto.fecha.desc()).all()
     productos = Producto.query.order_by(Producto.nombre).all()
-    return render_template("stock/mermas.html", bajas=bajas, productos=productos, motivos_merma=MOTIVOS_MERMA)
+    return render_template(
+        "stock/mermas.html",
+        bajas=bajas,
+        productos=productos,
+        motivos_merma=MOTIVOS_MERMA,
+        producto_sel_id=producto_sel_id,
+        cantidad_sugerida=cantidad_sugerida,
+    )
 
 
 @bp.route("/movimientos")

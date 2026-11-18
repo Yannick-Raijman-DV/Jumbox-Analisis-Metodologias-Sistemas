@@ -12,57 +12,86 @@
 </form>
 
 {% if q %}
-<div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm">
+{% set ver_comercial = current_user.tiene_rol('Admin', 'Cajero') %}
+{% set ver_operativo = current_user.tiene_rol('Admin', 'Operario') %}
+<div class="grid grid-cols-1 md:grid-cols-2 {% if ver_comercial and ver_operativo %}lg:grid-cols-4{% elif ver_comercial %}lg:grid-cols-3{% endif %} gap-6 text-sm">
     <div class="bg-white p-5 rounded-xl border border-outline-variant">
         <h3 class="font-bold mb-3">Productos ({{ productos|length }})</h3>
         <div class="space-y-2">
             {% for p in productos %}
-            <div class="p-2.5 rounded-lg bg-surface-container-low flex justify-between items-center">
+            <a href="{{ url_for('stock.editar_producto', producto_id=p.id) if ver_operativo else url_for('pos.venta') }}"
+               class="p-2.5 rounded-lg bg-surface-container-low hover:bg-surface-container flex justify-between items-center transition-colors">
                 <div>
-                    <p class="font-semibold">{{ p.nombre }}</p>
+                    <p class="font-semibold text-on-surface">{{ p.nombre }}</p>
                     <p class="font-label-sm text-xs text-on-surface-variant">{{ p.sku }} • Góndola: {{ p.stock_gondola }}</p>
                 </div>
                 <span class="font-label-md font-bold text-primary">${{ "%.2f"|format(p.precio) }}</span>
-            </div>
+            </a>
             {% else %}
             <p class="text-xs text-on-surface-variant">Sin coincidencias.</p>
             {% endfor %}
         </div>
     </div>
 
+    {% if ver_comercial %}
     <div class="bg-white p-5 rounded-xl border border-outline-variant">
         <h3 class="font-bold mb-3">Clientes ({{ clientes|length }})</h3>
         <div class="space-y-2">
             {% for c in clientes %}
-            <div class="p-2.5 rounded-lg bg-surface-container-low flex justify-between items-center">
+            <a href="{{ url_for('clientes.index', q=c.dni) }}"
+               class="p-2.5 rounded-lg bg-surface-container-low hover:bg-surface-container flex justify-between items-center transition-colors">
                 <div>
-                    <p class="font-semibold">{{ c.nombre_completo }}</p>
+                    <p class="font-semibold text-on-surface">{{ c.nombre_completo }}</p>
                     <p class="font-label-sm text-xs text-on-surface-variant">DNI {{ c.dni }}</p>
                 </div>
                 <span class="font-label-md font-bold text-secondary">{{ c.puntos }} pts</span>
-            </div>
+            </a>
             {% else %}
             <p class="text-xs text-on-surface-variant">Sin coincidencias.</p>
             {% endfor %}
         </div>
     </div>
+    {% endif %}
 
+    {% if ver_operativo %}
     <div class="bg-white p-5 rounded-xl border border-outline-variant">
         <h3 class="font-bold mb-3">Proveedores ({{ proveedores|length }})</h3>
         <div class="space-y-2">
             {% for pr in proveedores %}
-            <div class="p-2.5 rounded-lg bg-surface-container-low flex justify-between items-center">
+            <a href="{{ url_for('proveedores.detalle', proveedor_id=pr.id) }}"
+               class="p-2.5 rounded-lg bg-surface-container-low hover:bg-surface-container flex justify-between items-center transition-colors">
                 <div>
-                    <p class="font-semibold">{{ pr.nombre }}</p>
+                    <p class="font-semibold text-on-surface">{{ pr.nombre }}</p>
                     <p class="font-label-sm text-xs text-on-surface-variant">CUIT {{ pr.cuit }}</p>
                 </div>
                 <span class="font-label-md font-bold text-error">${{ "%.2f"|format(pr.deuda) }}</span>
-            </div>
+            </a>
             {% else %}
             <p class="text-xs text-on-surface-variant">Sin coincidencias.</p>
             {% endfor %}
         </div>
     </div>
+    {% endif %}
+
+    {% if ver_comercial %}
+    <div class="bg-white p-5 rounded-xl border border-outline-variant">
+        <h3 class="font-bold mb-3">Tickets ({{ ventas|length }})</h3>
+        <div class="space-y-2">
+            {% for v in ventas %}
+            <a href="{{ url_for('pos.ticket', venta_id=v.id) }}"
+               class="p-2.5 rounded-lg bg-surface-container-low hover:bg-surface-container flex justify-between items-center transition-colors">
+                <div>
+                    <p class="font-semibold text-primary">Ticket #{{ v.id }}</p>
+                    <p class="font-label-sm text-xs text-on-surface-variant">{{ v.metodo_pago }} • {{ v.fecha.strftime('%d/%m/%Y %H:%M') }}</p>
+                </div>
+                <span class="font-label-md font-bold text-primary">${{ "%.2f"|format(v.total) }}</span>
+            </a>
+            {% else %}
+            <p class="text-xs text-on-surface-variant">Sin coincidencias (buscá por número de ticket).</p>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
 </div>
 {% endif %}
 {% endblock %}

@@ -336,3 +336,34 @@ Decisiones de diseño:
   2. Incorporar trazabilidad por **Lotes múltiples (`Lote`)** por producto para aplicar despacho FEFO (*First Expired, First Out*) cuando coexisten distintas partidas del mismo SKU.
   3. Integrar notificaciones automáticas por WhatsApp/email al cambiar el estado del envío en el módulo de logística.
   4. Recibir el **webhook** de Mercado Pago (evento *Order*, con validación de la firma `x-signature`) para confirmar los pagos sin depender del regreso del navegador ni del botón "Verificar pago".
+
+---
+
+## 7. Trazabilidad con el 1er Parcial, Benchmarking y Sostenibilidad Económica
+
+> Resumen ejecutivo requerido para la defensa del proyecto (integrado con `BENCHMARK.docx`, `PROPUESTA_NEGOCIO_JUMBOX.docx` y `RENTABILIDAD.docx`).
+
+### 7.1 Qué se mantuvo, qué cambió y qué se pospuso respecto del 1er parcial
+
+| Aspecto | Qué venía del 1er parcial | Estado en Jumbox (2do parcial) y motivo |
+|---|---|---|
+| **Se mantuvo** | Stock en doble ubicación (Depósito vs. Góndola), alerta de vencimiento a 7 días, puntos de fidelización (`1 c/ $100`) y pagos parciales a proveedores | Conservado íntegramente en `services/inventario.py` y `models.py`; se mantuvieron los hashes jBCrypt (`$2a$`) originales de las cuentas migradas |
+| **Se modificó** | Aplicación desktop Java Swing + MySQL local + `LONGBLOB` para fotos + login único local + envío registrado a mano | Migrado a Flask modular (8 Blueprints), Google OAuth con selector de rol, fotos privadas en AWS S3 (`jumbox`), Geoapify (costo sumado en caja), Mercado Pago (`Orders API`) y DolarAPI bajo demanda |
+| **Se descartó / pospuso** | Open Food Facts (autocompletado externo) / BD única PostgreSQL en la nube y múltiples lotes FEFO | Open Food Facts se descartó porque el supermercado gestiona su propio catálogo y fotos en S3; **Supabase (PostgreSQL)** y **lotes FEFO** quedan en el roadmap v2 para resolver el disco efímero en Render Free |
+
+### 7.2 Comparativa frente a la competencia (Benchmarking)
+
+| Criterio | Loyverse POS | Odoo POS | Alternativa manual (Java Swing / Excel) | **JUMBOX (Nuestro sistema)** |
+|---|---|---|---|---|
+| **Acceso y roles** | Empleados en plan pago | ERP complejo de configurar | Local en 1 sola PC | **Google Auth 1 clic + 3 roles (`Admin`, `Operario`, `Cajero`)** |
+| **Archivos en nube** | Catálogo limitado | Módulo pago extra | `LONGBLOB` local / papel | **AWS S3 privado con URLs prefirmadas** |
+| **Control de vencimientos y envíos** | Sin caducidad nativa | Configuración pesada | Planillas / WhatsApp sin tarifa | **Semáforo 7 días + bloqueo vencidos + Geoapify en caja** |
+| **IA y reposición** | Add-on pago | Reglas complejas | Manual a ojo | **IA local (`Qwen2.5`) + fallback + orden 1 clic** |
+| **Modelo económico** | Freemium + add-ons (`USD 39+/mes`) | Suscripción + consultoría | Pérdida oculta `12%–18%` por mermas | **SaaS pyme accesible (`USD 25/mes`) / B2B con SLA** |
+
+### 7.3 Costos cloud, punto de equilibrio y ROI
+
+- **Infraestructura mensual estimada (operación cloud real para despliegue productivo):** Render / VPS Web App (`USD 19`) + Base de datos gestionada Supabase (`USD 15`) + AWS S3 `sa-east-1` (`USD 1`; consumo medido `< USD 0,10/mes` para 300 archivos) + Dominio/SSL (`USD 2`) + Google OAuth / Geoapify Free / Mercado Pago API / DolarAPI / Qwen CPU (`USD 0`) = **Total fijo: `USD 37/mes`**.
+- **Punto de equilibrio (Break-Even):** Con un abono pyme de `USD 25/mes` por sucursal y `USD 0,50` de costo variable, **2 sucursales activas** cubren el 100% de los costos fijos cloud (`37 ÷ (25 − 0,50) = 1,51`).
+- **Proyección corporativa (Informe de Rentabilidad):** En el esquema corporativo con licencia de migración e implementación (`4 hitos` + abono `SLA`), la proyección a 12 meses alcanza un **ROI de `58,4%`** y punto de equilibrio en el **Mes 4**, amortizado para el supermercado al reducir entre **`12%` y `18%`** las pérdidas mensuales por mercadería vencida.
+

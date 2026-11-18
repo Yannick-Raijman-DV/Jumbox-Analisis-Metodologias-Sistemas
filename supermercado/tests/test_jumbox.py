@@ -352,3 +352,61 @@ def test_vistas_por_rol_y_historial_ventas(client):
     assert "Alertas operativas de stock" in html_admin
     assert client.get("/pos/ventas").status_code == 200
 
+
+def test_mejoras_buscador_clientes_movimientos_y_mermas(client):
+    # 1. Admin: buscador muestra tickets (#10 / 10), clientes, productos y proveedores con links
+    login_como(client, "administrador", "1234")
+    html_ticket = client.get("/buscador?q=%2310").get_data(as_text=True)
+    assert "Tickets (1)" in html_ticket
+    assert "/pos/ticket/10" in html_ticket
+
+    html_coca = client.get("/buscador?q=CocaCola").get_data(as_text=True)
+    assert "Productos (1)" in html_coca
+    assert "/stock/productos/1/editar" in html_coca
+
+    # 2. Clientes: buscador y modal de edición + POST /clientes/<id>/editar
+    html_cli = client.get("/clientes/").get_data(as_text=True)
+    assert 'id="modal-editar-cliente"' in html_cli
+    assert 'name="q"' in html_cli
+    r_edit = client.post(
+        "/clientes/1/editar",
+        data={
+            "nombre": "ClienteEditado",
+            "apellido": "Demo",
+            "dni": "99888777",
+            "telefono": "11-5555-9999",
+            "direccion": "Av. Callao 500, CABA",
+        },
+        follow_redirects=True,
+    )
+    assert r_edit.status_code == 200
+    assert "ClienteEditado" in client.get("/clientes/?q=99888777").get_data(as_text=True)
+
+    # 3. Movimientos: píldoras de filtro por tipo real (INGRESO_COMPRA, etc.)
+    html_mov = client.get("/stock/movimientos").get_data(as_text=True)
+    assert "tipo=INGRESO_COMPRA" in html_mov
+    assert "tipo=BAJA_MERMA" in html_mov
+    assert client.get("/stock/movimientos?tipo=INGRESO_COMPRA").status_code == 200
+
+    # 4. Preselección en Mermas desde Stock / IA
+    html_merma = client.get("/stock/mermas?producto_id=2").get_data(as_text=True)
+    assert '<option value="2" selected' in html_merma
+    html_ia = client.get("/ia/reposicion").get_data(as_text=True)
+    if "Ir a Mermas" in html_ia:
+        assert "/stock/mermas?producto_id=" in html_ia
+    client.get("/logout")
+
+    # 5. Buscador filtrado por rol: Cajero no ve Proveedores; Operario no ve Clientes ni Tickets
+    login_como(client, "cajero", "1234")
+    html_busc_cajero = client.get("/buscador?q=10").get_data(as_text=True)
+    assert "Tickets (1)" in html_busc_cajero
+    assert "Proveedores (" not in html_busc_cajero
+    client.get("/logout")
+
+    login_como(client, "operario", "1234")
+    html_busc_op = client.get("/buscador?q=10").get_data(as_text=True)
+    assert "Proveedores (" in html_busc_op
+    assert "Clientes (" not in html_busc_op
+    assert "Tickets (" not in html_busc_op
+
+

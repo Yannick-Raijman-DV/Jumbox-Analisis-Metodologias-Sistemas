@@ -60,7 +60,7 @@ flask --app run s3-check
 pytest -v
 ```
 
-La suite tiene 100 tests: `tests/test_jumbox.py` (10), `tests/test_apis_dolar_off.py` (14), `tests/test_geoapify.py` (41), `tests/test_mercadopago.py` (30) y `tests/test_s3_check.py` (5). Las pruebas de APIs externas y S3 **nunca salen a internet**: `requests` y `boto3` están siempre mockeados, así que corren sin keys.
+La suite tiene 101 tests: `tests/test_jumbox.py` (11), `tests/test_apis_dolar_off.py` (14), `tests/test_geoapify.py` (41), `tests/test_mercadopago.py` (30) y `tests/test_s3_check.py` (5). Las pruebas de APIs externas y S3 **nunca salen a internet**: `requests` y `boto3` están siempre mockeados, así que corren sin keys.
 
 ---
 

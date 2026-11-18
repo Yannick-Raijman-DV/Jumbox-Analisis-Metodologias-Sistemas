@@ -1,8 +1,8 @@
 """Blueprint principal: Dashboard y buscador global (Cmd+K)."""
 from flask import Blueprint, render_template, request
-from flask_login import login_required
+from flask_login import current_user, login_required
 
-from ..models import Cliente, Producto, Proveedor, Venta
+from ..models import ROL_ADMIN, ROL_CAJERO, ROL_OPERARIO, Cliente, Producto, Proveedor, Venta
 from ..services.inventario import resumen_dashboard
 
 bp = Blueprint("main", __name__)
@@ -21,6 +21,9 @@ def index():
 def buscador():
     q = (request.args.get("q") or "").strip()
     productos, clientes, proveedores, ventas = [], [], [], []
+    ver_comercial = current_user.tiene_rol(ROL_ADMIN, ROL_CAJERO)
+    ver_operativo = current_user.tiene_rol(ROL_ADMIN, ROL_OPERARIO)
+
     if q:
         patron = f"%{q}%"
         productos = (
@@ -30,26 +33,29 @@ def buscador():
             .order_by(Producto.nombre)
             .all()
         )
-        clientes = (
-            Cliente.query.filter(
-                (Cliente.nombre.ilike(patron))
-                | (Cliente.apellido.ilike(patron))
-                | (Cliente.dni.ilike(patron))
+        if ver_comercial:
+            clientes = (
+                Cliente.query.filter(
+                    (Cliente.nombre.ilike(patron))
+                    | (Cliente.apellido.ilike(patron))
+                    | (Cliente.dni.ilike(patron))
+                )
+                .order_by(Cliente.nombre)
+                .all()
             )
-            .order_by(Cliente.nombre)
-            .all()
-        )
-        proveedores = (
-            Proveedor.query.filter(
-                (Proveedor.nombre.ilike(patron)) | (Proveedor.cuit.ilike(patron))
+            numero_ticket = q[1:].strip() if q.startswith("#") else q
+            if numero_ticket.isdigit():
+                v = Venta.query.filter_by(id=int(numero_ticket)).first()
+                if v:
+                    ventas = [v]
+        if ver_operativo:
+            proveedores = (
+                Proveedor.query.filter(
+                    (Proveedor.nombre.ilike(patron)) | (Proveedor.cuit.ilike(patron))
+                )
+                .order_by(Proveedor.nombre)
+                .all()
             )
-            .order_by(Proveedor.nombre)
-            .all()
-        )
-        if q.isdigit():
-            v = Venta.query.filter_by(id=int(q)).first()
-            if v:
-                ventas = [v]
     return render_template(
         "main/buscador.html",
         q=q,

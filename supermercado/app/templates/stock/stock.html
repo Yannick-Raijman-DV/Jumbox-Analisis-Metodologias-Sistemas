@@ -128,8 +128,11 @@
                         <span class="text-xs text-on-surface-variant">Sin stock en depósito</span>
                         {% endif %}
                     </td>
-                    <td class="px-5 py-3.5 text-right">
-                        <a href="{{ url_for('stock.editar_producto', producto_id=p.id) }}" class="text-primary hover:underline text-sm font-semibold">Editar</a>
+                    <td class="px-5 py-3.5 text-right space-y-1">
+                        <a href="{{ url_for('stock.editar_producto', producto_id=p.id) }}" class="text-primary hover:underline text-sm font-semibold block">Editar</a>
+                        {% if p.estado_vencimiento == 'vencido' %}
+                        <a href="{{ url_for('stock.mermas', producto_id=p.id) }}" class="text-error hover:underline text-xs font-bold block">Dar de baja</a>
+                        {% endif %}
                     </td>
                 </tr>
                 {% endfor %}

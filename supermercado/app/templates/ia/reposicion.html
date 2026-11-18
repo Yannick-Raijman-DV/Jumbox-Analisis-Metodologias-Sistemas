@@ -126,7 +126,7 @@
                             <button type="submit" class="bg-primary text-white px-3 py-1 rounded-lg text-xs font-semibold">Trasladar</button>
                         </form>
                         {% elif c.accion == 'Dar de baja' %}
-                        <a href="{{ url_for('stock.mermas') }}" class="text-error font-bold text-xs hover:underline">Ir a Mermas →</a>
+                        <a href="{{ url_for('stock.mermas', producto_id=c.producto_id) }}" class="text-error font-bold text-xs hover:underline">Ir a Mermas →</a>
                         {% else %}
                         <span class="text-xs text-on-surface-variant">—</span>
                         {% endif %}

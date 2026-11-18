@@ -20,7 +20,7 @@
                 <label class="block text-sm font-semibold mb-1.5">Producto</label>
                 <select name="producto_id" required class="w-full rounded-xl border-outline-variant text-sm">
                     {% for p in productos %}
-                    <option value="{{ p.id }}">
+                    <option value="{{ p.id }}" {% if producto_sel_id == p.id %}selected{% endif %}>
                         {{ p.nombre }} (Gónd: {{ p.stock_gondola }} / Dep: {{ p.stock_deposito }})
                     </option>
                     {% endfor %}
@@ -29,7 +29,7 @@
             <div class="grid grid-cols-2 gap-3">
                 <div>
                     <label class="block text-sm font-semibold mb-1.5">Cantidad</label>
-                    <input type="number" name="cantidad" min="1" value="1" required class="w-full rounded-xl border-outline-variant text-sm font-label-sm"/>
+                    <input type="number" name="cantidad" min="1" value="{{ cantidad_sugerida or 1 }}" required class="w-full rounded-xl border-outline-variant text-sm font-label-sm"/>
                 </div>
                 <div>
                     <label class="block text-sm font-semibold mb-1.5">Ubicación</label>
